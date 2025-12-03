@@ -35,6 +35,10 @@ CLAUDE.md
 # Documentation
 docs/
 
+# Air hot reload
+tmp/
+build-errors.log
+
 # Editor/IDE
 # .idea/
 # .vscode/

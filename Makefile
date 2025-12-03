@@ -1,4 +1,4 @@
-.PHONY: help setup up down restart logs deps-up deps-down proto-gen build test lint
+.PHONY: help setup up down restart logs deps-up deps-down proto-gen build test lint dev dev-user dev-gateway dev-web
 
 # Default target
 help:
@@ -22,7 +22,13 @@ help:
 	@echo "  make deps-down          - Stop infrastructure"
 	@echo "  make deps-restart       - Restart infrastructure"
 	@echo ""
-	@echo "Development:"
+	@echo "Development (Hot Reload):"
+	@echo "  make dev                - Start deps + all services with Air hot reload"
+	@echo "  make dev-user           - Run user-service with Air hot reload"
+	@echo "  make dev-gateway        - Run api-gateway with Air hot reload"
+	@echo "  make dev-web            - Run web-app with Air hot reload"
+	@echo ""
+	@echo "Development (Other):"
 	@echo "  make proto-gen          - Generate Go code from .proto files"
 	@echo "  make deps-install       - Install Go dependencies for all services"
 	@echo "  make lint               - Run golangci-lint on all services"
@@ -103,7 +109,44 @@ deps-down:
 deps-restart:
 	docker-compose -f deployments/docker-compose/docker-compose.deps.yml restart
 
-# Development
+# Development - Hot Reload with Air
+# Prerequisites: go install github.com/cosmtrek/air@latest
+
+dev: deps-up
+	@echo "Waiting for Kafka to be ready..."
+	@until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list > /dev/null 2>&1; do \
+		echo "  Kafka not ready yet, waiting..."; \
+		sleep 2; \
+	done
+	@echo "✓ Kafka is ready!"
+	@echo ""
+	@echo "Starting all services with hot reload..."
+	@echo "Press Ctrl+C to stop all services"
+	@echo ""
+	@echo "Services:"
+	@echo "  User Service:  localhost:50051 (gRPC)"
+	@echo "  API Gateway:   localhost:8080"
+	@echo "  Web App:       localhost:3000"
+	@echo ""
+	@trap 'kill 0' SIGINT; \
+	(cd services/user-service && air) & \
+	(cd services/api-gateway && air) & \
+	(cd services/web-app && air) & \
+	wait
+
+dev-user:
+	@echo "Starting user-service with hot reload..."
+	cd services/user-service && air
+
+dev-gateway:
+	@echo "Starting api-gateway with hot reload..."
+	cd services/api-gateway && air
+
+dev-web:
+	@echo "Starting web-app with hot reload..."
+	cd services/web-app && air
+
+# Development - Code Generation
 proto-gen:
 	@echo "Generating protobuf code..."
 	./scripts/proto-gen.sh

@@ -1,0 +1,54 @@
+# Air configuration for web-app
+# Install: go install github.com/cosmtrek/air@latest
+# Run: air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Binary output
+bin = "./tmp/web-app"
+# Build command
+cmd = "go build -o ./tmp/web-app ./cmd/main.go"
+# Delay before rebuilding after file change (ms)
+delay = 500
+# Files to exclude from watching
+exclude_dir = ["tmp", "vendor", "testdata"]
+exclude_file = []
+exclude_regex = ["_test.go"]
+exclude_unchanged = false
+follow_symlink = false
+full_bin = ""
+# Include directories to watch - also watch templates and static files
+include_dir = ["cmd", "config", "internal", "templates", "static"]
+# File extensions to watch - include HTML, CSS, JS for frontend changes
+include_ext = ["go", "html", "css", "js", "tmpl", "tpl"]
+# Kill running process before building
+kill_delay = "2s"
+# Log output
+log = "build-errors.log"
+# Send interrupt signal before killing
+send_interrupt = false
+# Stop on error
+stop_on_error = true
+
+[color]
+# Colorize output
+app = ""
+build = "yellow"
+main = "magenta"
+runner = "green"
+watcher = "cyan"
+
+[log]
+# Show log time
+time = false
+
+[misc]
+# Clean tmp on exit
+clean_on_exit = true
+
+[screen]
+clear_on_rebuild = false
+keep_scroll = true
+

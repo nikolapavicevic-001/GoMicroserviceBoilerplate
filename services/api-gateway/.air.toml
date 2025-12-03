@@ -1,0 +1,54 @@
+# Air configuration for api-gateway
+# Install: go install github.com/cosmtrek/air@latest
+# Run: air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Binary output
+bin = "./tmp/api-gateway"
+# Build command
+cmd = "go build -o ./tmp/api-gateway ./cmd/main.go"
+# Delay before rebuilding after file change (ms)
+delay = 1000
+# Files to exclude from watching
+exclude_dir = ["tmp", "vendor", "testdata", "docs"]
+exclude_file = []
+exclude_regex = ["_test.go"]
+exclude_unchanged = false
+follow_symlink = false
+full_bin = ""
+# Include directories to watch
+include_dir = []
+# File extensions to watch
+include_ext = ["go", "tpl", "tmpl", "html"]
+# Kill running process before building
+kill_delay = "2s"
+# Log output
+log = "build-errors.log"
+# Send interrupt signal before killing
+send_interrupt = false
+# Stop on error
+stop_on_error = true
+
+[color]
+# Colorize output
+app = ""
+build = "yellow"
+main = "magenta"
+runner = "green"
+watcher = "cyan"
+
+[log]
+# Show log time
+time = false
+
+[misc]
+# Clean tmp on exit
+clean_on_exit = true
+
+[screen]
+clear_on_rebuild = false
+keep_scroll = true
+
