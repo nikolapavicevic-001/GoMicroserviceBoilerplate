@@ -1,0 +1,178 @@
+{{define "content"}}
+<div class="min-h-screen bg-gray-100" x-data="dashboardPage()">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <h1 class="text-xl font-bold text-gray-900">Boilerplate App</h1>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/dashboard" class="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Dashboard
+                        </a>
+                        <a href="#" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            Profile
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="ml-3 relative" x-data="{ open: false }">
+                        <div>
+                            <button @click="open = !open" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                <span class="sr-only">Open user menu</span>
+                                <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
+                                    {{index .Name 0}}
+                                </div>
+                            </button>
+                        </div>
+                        <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5" style="display: none;">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+                            <a href="/logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold text-gray-900">
+                Welcome back, {{.Name}}!
+            </h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Stats Cards -->
+        <div class="px-4 py-6 sm:px-0">
+            <div
+                class="grid grid-cols-1 gap-5 sm:grid-cols-3"
+                hx-get="/dashboard/stats"
+                hx-trigger="load"
+                hx-swap="innerHTML"
+            >
+                <!-- Loading state -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="animate-pulse flex space-x-4">
+                            <div class="flex-1 space-y-4 py-1">
+                                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                                <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white shadow rounded-lg">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex" aria-label="Tabs">
+                        <button
+                            @click="activeTab = 'activity'"
+                            :class="activeTab === 'activity' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm"
+                        >
+                            Recent Activity
+                        </button>
+                        <button
+                            @click="activeTab = 'users'"
+                            :class="activeTab === 'users' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                            class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm"
+                        >
+                            Users
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content: Recent Activity -->
+                <div
+                    x-show="activeTab === 'activity'"
+                    class="p-4"
+                    hx-get="/dashboard/activity"
+                    hx-trigger="revealed, tabChange from:body"
+                    hx-swap="innerHTML"
+                >
+                    <div class="animate-pulse space-y-4">
+                        <div class="h-4 bg-gray-200 rounded w-full"></div>
+                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        <div class="h-4 bg-gray-200 rounded w-4/6"></div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Users -->
+                <div
+                    x-show="activeTab === 'users'"
+                    class="p-4"
+                    hx-get="/dashboard/users"
+                    hx-trigger="revealed, tabChange from:body"
+                    hx-swap="innerHTML"
+                    style="display: none;"
+                >
+                    <div class="animate-pulse space-y-4">
+                        <div class="h-4 bg-gray-200 rounded w-full"></div>
+                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        <div class="h-4 bg-gray-200 rounded w-4/6"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Updates Demo -->
+        <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Live Updates Demo</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Server time updates every 2 seconds:</p>
+                        <div
+                            class="mt-2 text-2xl font-mono text-indigo-600"
+                            hx-get="/dashboard/time"
+                            hx-trigger="every 2s"
+                            hx-swap="innerHTML"
+                        >
+                            Loading...
+                        </div>
+                    </div>
+
+                    <div>
+                        <button
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            hx-post="/dashboard/action"
+                            hx-swap="outerHTML"
+                            hx-target="next div"
+                        >
+                            Trigger Action
+                        </button>
+                        <div class="mt-2 text-sm text-gray-500">
+                            Click the button to see HTMX in action
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+function dashboardPage() {
+    return {
+        activeTab: 'activity',
+        init() {
+            // Watch for tab changes and trigger custom event for HTMX
+            this.$watch('activeTab', () => {
+                document.body.dispatchEvent(new CustomEvent('tabChange'));
+            });
+        }
+    }
+}
+</script>
+{{end}}

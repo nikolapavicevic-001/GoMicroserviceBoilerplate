@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: boilerplate-dev
+
+bases:
+  - ../../base
+
+nameSuffix: -dev
+
+commonLabels:
+  environment: dev
+
+patches:
+  - target:
+      kind: Deployment
+      name: user-service
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  - target:
+      kind: Deployment
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  - target:
+      kind: Deployment
+      name: web-app
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=console
+      - ENVIRONMENT=development
+
+images:
+  - name: yourorg/user-service
+    newTag: dev-latest
+  - name: yourorg/api-gateway
+    newTag: dev-latest
+  - name: yourorg/web-app
+    newTag: dev-latest

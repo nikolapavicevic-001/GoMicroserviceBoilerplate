@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: boilerplate
+spec:
+  selector:
+    app: api-gateway
+  type: LoadBalancer
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+    - port: 9090
+      targetPort: 9090
+      name: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: boilerplate
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: yourorg/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: LOG_FORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_FORMAT
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: GATEWAY_HTTP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GATEWAY_HTTP_PORT
+            - name: GATEWAY_USER_SERVICE_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GATEWAY_USER_SERVICE_ADDR
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: JWT_EXPIRY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JWT_EXPIRY
+            - name: JWT_REFRESH_EXPIRY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JWT_REFRESH_EXPIRY
+            - name: OAUTH2_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GOOGLE_CLIENT_ID
+            - name: OAUTH2_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GOOGLE_CLIENT_SECRET
+            - name: OAUTH2_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GITHUB_CLIENT_ID
+            - name: OAUTH2_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GITHUB_CLIENT_SECRET
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CORS_ALLOWED_ORIGINS
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JAEGER_ENDPOINT
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

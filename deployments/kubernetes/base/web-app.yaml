@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: boilerplate
+spec:
+  selector:
+    app: web-app
+  type: LoadBalancer
+  ports:
+    - port: 3000
+      targetPort: 3000
+      name: http
+    - port: 9092
+      targetPort: 9092
+      name: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: boilerplate
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+        - name: web-app
+          image: yourorg/web-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 9092
+              name: metrics
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: LOG_FORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_FORMAT
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: WEBAPP_HTTP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: WEBAPP_HTTP_PORT
+            - name: WEBAPP_USER_SERVICE_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: WEBAPP_USER_SERVICE_ADDR
+            - name: WEBAPP_GATEWAY_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: WEBAPP_GATEWAY_ADDR
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SESSION_SECRET
+            - name: SESSION_MAX_AGE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SESSION_MAX_AGE
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: JWT_EXPIRY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JWT_EXPIRY
+            - name: OAUTH2_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GOOGLE_CLIENT_ID
+            - name: OAUTH2_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GOOGLE_CLIENT_SECRET
+            - name: OAUTH2_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GITHUB_CLIENT_ID
+            - name: OAUTH2_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: OAUTH2_GITHUB_CLIENT_SECRET
+            - name: CSRF_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: CSRF_SECRET
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JAEGER_ENDPOINT
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

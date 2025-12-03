@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: boilerplate
+spec:
+  selector:
+    app: jaeger
+  ports:
+    - port: 16686
+      targetPort: 16686
+      name: ui
+    - port: 14268
+      targetPort: 14268
+      name: collector
+    - port: 6831
+      targetPort: 6831
+      protocol: UDP
+      name: agent-compact
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: boilerplate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:1.51
+          ports:
+            - containerPort: 16686
+            - containerPort: 14268
+            - containerPort: 6831
+              protocol: UDP
+          env:
+            - name: COLLECTOR_ZIPKIN_HOST_PORT
+              value: ":9411"

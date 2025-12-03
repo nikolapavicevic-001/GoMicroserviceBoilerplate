@@ -1,0 +1,176 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=users_db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - boilerplate
+
+  # Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - boilerplate
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - boilerplate
+
+  # Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: jaeger
+    ports:
+      - "16686:16686"  # Web UI
+      - "14268:14268"  # Direct
+    networks:
+      - boilerplate
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - boilerplate
+
+  # User Service
+  user-service:
+    build:
+      context: ../..
+      dockerfile: services/user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "50051:50051"
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=console
+      - USER_SERVICE_GRPC_PORT=50051
+      - USER_SERVICE_MONGO_URI=mongodb://mongodb:27017
+      - USER_SERVICE_MONGO_DB=users_db
+      - KAFKA_BROKERS=kafka:29092
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - boilerplate
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../..
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=console
+      - GATEWAY_HTTP_PORT=8080
+      - GATEWAY_USER_SERVICE_ADDR=user-service:50051
+      - JWT_SECRET=your-secret-key-change-in-production-minimum-32-characters
+      - JWT_EXPIRY=24h
+      - JWT_REFRESH_EXPIRY=168h
+      - OAUTH2_GOOGLE_CLIENT_ID=${OAUTH2_GOOGLE_CLIENT_ID}
+      - OAUTH2_GOOGLE_CLIENT_SECRET=${OAUTH2_GOOGLE_CLIENT_SECRET}
+      - OAUTH2_GOOGLE_REDIRECT_URL=http://localhost:8080/auth/google/callback
+      - OAUTH2_GITHUB_CLIENT_ID=${OAUTH2_GITHUB_CLIENT_ID}
+      - OAUTH2_GITHUB_CLIENT_SECRET=${OAUTH2_GITHUB_CLIENT_SECRET}
+      - OAUTH2_GITHUB_REDIRECT_URL=http://localhost:8080/auth/github/callback
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    depends_on:
+      - user-service
+      - jaeger
+    networks:
+      - boilerplate
+
+  # Web App
+  web-app:
+    build:
+      context: ../..
+      dockerfile: services/web-app/Dockerfile
+    container_name: web-app
+    ports:
+      - "3000:3000"
+    environment:
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=console
+      - WEBAPP_HTTP_PORT=3000
+      - WEBAPP_USER_SERVICE_ADDR=user-service:50051
+      - WEBAPP_GATEWAY_ADDR=http://api-gateway:8080
+      - SESSION_SECRET=change-this-secret-in-production-minimum-32-chars
+      - SESSION_MAX_AGE=24h
+      - JWT_SECRET=your-secret-key-change-in-production-minimum-32-characters
+      - JWT_EXPIRY=24h
+      - OAUTH2_GOOGLE_CLIENT_ID=${OAUTH2_GOOGLE_CLIENT_ID}
+      - OAUTH2_GOOGLE_CLIENT_SECRET=${OAUTH2_GOOGLE_CLIENT_SECRET}
+      - OAUTH2_GOOGLE_REDIRECT_URL=http://localhost:3000/auth/google/callback
+      - OAUTH2_GITHUB_CLIENT_ID=${OAUTH2_GITHUB_CLIENT_ID}
+      - OAUTH2_GITHUB_CLIENT_SECRET=${OAUTH2_GITHUB_CLIENT_SECRET}
+      - OAUTH2_GITHUB_REDIRECT_URL=http://localhost:3000/auth/github/callback
+      - CSRF_SECRET=change-this-csrf-secret-in-production
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+    depends_on:
+      - user-service
+      - api-gateway
+      - jaeger
+    networks:
+      - boilerplate
+
+networks:
+  boilerplate:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  prometheus_data:

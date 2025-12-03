@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/yourorg/boilerplate/shared/proto/gen/common/v1;commonv1";
+
+// PaginationRequest represents pagination parameters
+message PaginationRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// PaginationResponse represents pagination metadata
+message PaginationResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total_count = 3;
+  int32 total_pages = 4;
+}

@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: boilerplate-staging
+
+bases:
+  - ../../base
+
+nameSuffix: -staging
+
+commonLabels:
+  environment: staging
+
+patches:
+  - target:
+      kind: Deployment
+      name: user-service
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  - target:
+      kind: Deployment
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  - target:
+      kind: Deployment
+      name: web-app
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - ENVIRONMENT=staging
+
+images:
+  - name: yourorg/user-service
+    newTag: staging-latest
+  - name: yourorg/api-gateway
+    newTag: staging-latest
+  - name: yourorg/web-app
+    newTag: staging-latest

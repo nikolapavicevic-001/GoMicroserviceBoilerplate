@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: boilerplate
+spec:
+  selector:
+    app: user-service
+  ports:
+    - port: 50051
+      targetPort: 50051
+      name: grpc
+    - port: 9091
+      targetPort: 9091
+      name: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: boilerplate
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: yourorg/user-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+              name: grpc
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_LEVEL
+            - name: LOG_FORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: LOG_FORMAT
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: USER_SERVICE_GRPC_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: USER_SERVICE_GRPC_PORT
+            - name: USER_SERVICE_MONGO_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MONGO_URI
+            - name: USER_SERVICE_MONGO_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: USER_SERVICE_MONGO_DB
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: KAFKA_BROKERS
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: JAEGER_ENDPOINT
+          livenessProbe:
+            exec:
+              command:
+                - grpc_health_probe
+                - -addr=:50051
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - grpc_health_probe
+                - -addr=:50051
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
