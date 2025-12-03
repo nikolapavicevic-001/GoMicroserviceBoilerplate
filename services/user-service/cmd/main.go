@@ -21,6 +21,8 @@ import (
 	mongoClient "github.com/yourorg/boilerplate/shared/database/mongodb"
 	"github.com/yourorg/boilerplate/shared/kafka"
 	"github.com/yourorg/boilerplate/shared/logger"
+	grpcMiddleware "github.com/yourorg/boilerplate/shared/middleware/grpc"
+	"github.com/yourorg/boilerplate/shared/tracing"
 )
 
 func main() {
@@ -32,7 +34,7 @@ func main() {
 	}
 
 	// Initialize logger
-	log := logger.New(cfg.LogLevel, cfg.LogFormat)
+	log := logger.NewWithService(cfg.LogLevel, cfg.LogFormat, "user-service")
 
 	log.Info().
 		Str("service", "user-service").
@@ -43,6 +45,22 @@ func main() {
 	// Create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Initialize tracing
+	tp, err := tracing.InitTracer(ctx, tracing.Config{
+		ServiceName:    "user-service",
+		JaegerEndpoint: cfg.OTLPEndpoint,
+		Environment:    cfg.Environment,
+		Enabled:        cfg.TracingEnabled,
+	})
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to initialize tracing, continuing without it")
+	} else if tp != nil {
+		defer tracing.Shutdown(ctx, tp)
+		log.Info().Str("endpoint", cfg.OTLPEndpoint).Msg("Tracing initialized")
+	} else {
+		log.Info().Msg("Tracing disabled")
+	}
 
 	// Connect to MongoDB
 	mongoConfig := mongoClient.NewConfig(cfg.MongoURI, cfg.MongoDB)
@@ -78,8 +96,14 @@ func main() {
 	// Initialize gRPC handler
 	userHandler := grpcHandler.NewUserHandler(userService)
 
-	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	// Create gRPC server with interceptors
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			grpcMiddleware.TracingInterceptor(),
+			grpcMiddleware.LoggingInterceptor(&log),
+			grpcMiddleware.RecoveryInterceptor(&log),
+		),
+	)
 
 	// Register services
 	pb.RegisterUserServiceServer(grpcServer, userHandler)

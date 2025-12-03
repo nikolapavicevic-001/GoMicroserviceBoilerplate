@@ -4,94 +4,134 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/sessions"
 	"github.com/labstack/echo/v4"
+	"github.com/yourorg/boilerplate/shared/auth"
 )
 
 const (
-	SessionName     = "webapp_session"
-	SessionKeyUser  = "user_id"
-	SessionKeyEmail = "email"
-	SessionKeyName  = "name"
+	CookieName = "auth_token"
 )
 
-// Store wraps gorilla sessions store
+// Store manages JWT-based authentication via cookies
 type Store struct {
-	store *sessions.CookieStore
+	jwtSecret string
+	maxAge    time.Duration
+	secure    bool
 }
 
-// NewStore creates a new session store
-func NewStore(secret string, maxAge time.Duration) *Store {
-	store := sessions.NewCookieStore([]byte(secret))
-	store.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   int(maxAge.Seconds()),
-		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
-		SameSite: http.SameSiteLaxMode,
-	}
-
+// NewStore creates a new JWT cookie store
+func NewStore(jwtSecret string, maxAge time.Duration) *Store {
 	return &Store{
-		store: store,
+		jwtSecret: jwtSecret,
+		maxAge:    maxAge,
+		secure:    false, // Set to true in production with HTTPS
 	}
 }
 
-// Get retrieves a session
-func (s *Store) Get(c echo.Context) (*sessions.Session, error) {
-	return s.store.Get(c.Request(), SessionName)
-}
-
-// Save saves a session
-func (s *Store) Save(c echo.Context, session *sessions.Session) error {
-	return session.Save(c.Request(), c.Response())
-}
-
-// SetUser sets user information in session
+// SetUser creates a JWT token and sets it as an httpOnly cookie
 func (s *Store) SetUser(c echo.Context, userID, email, name string) error {
-	session, err := s.Get(c)
+	// Generate JWT token
+	token, err := auth.GenerateToken(userID, email, s.jwtSecret, s.maxAge)
 	if err != nil {
 		return err
 	}
 
-	session.Values[SessionKeyUser] = userID
-	session.Values[SessionKeyEmail] = email
-	session.Values[SessionKeyName] = name
+	// Set cookie
+	cookie := &http.Cookie{
+		Name:     CookieName,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(s.maxAge.Seconds()),
+		HttpOnly: true,
+		Secure:   s.secure,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.SetCookie(cookie)
 
-	return s.Save(c, session)
+	// Also store name in a separate non-httpOnly cookie for display purposes
+	nameCookie := &http.Cookie{
+		Name:     "user_name",
+		Value:    name,
+		Path:     "/",
+		MaxAge:   int(s.maxAge.Seconds()),
+		HttpOnly: false,
+		Secure:   s.secure,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.SetCookie(nameCookie)
+
+	return nil
 }
 
-// GetUserID retrieves user ID from session
+// GetUserID retrieves user ID from JWT cookie
 func (s *Store) GetUserID(c echo.Context) (string, bool) {
-	session, err := s.Get(c)
+	cookie, err := c.Cookie(CookieName)
 	if err != nil {
 		return "", false
 	}
 
-	userID, ok := session.Values[SessionKeyUser].(string)
-	return userID, ok
+	claims, err := auth.ValidateToken(cookie.Value, s.jwtSecret)
+	if err != nil {
+		return "", false
+	}
+
+	return claims.UserID, true
 }
 
-// GetUser retrieves all user info from session
+// GetUser retrieves all user info from JWT cookie
 func (s *Store) GetUser(c echo.Context) (userID, email, name string, ok bool) {
-	session, err := s.Get(c)
+	cookie, err := c.Cookie(CookieName)
 	if err != nil {
 		return "", "", "", false
 	}
 
-	userID, ok1 := session.Values[SessionKeyUser].(string)
-	email, ok2 := session.Values[SessionKeyEmail].(string)
-	name, ok3 := session.Values[SessionKeyName].(string)
-
-	return userID, email, name, ok1 && ok2 && ok3
-}
-
-// Clear clears the session
-func (s *Store) Clear(c echo.Context) error {
-	session, err := s.Get(c)
+	claims, err := auth.ValidateToken(cookie.Value, s.jwtSecret)
 	if err != nil {
-		return err
+		return "", "", "", false
 	}
 
-	session.Options.MaxAge = -1
-	return s.Save(c, session)
+	// Get name from the separate cookie
+	nameCookie, err := c.Cookie("user_name")
+	if err != nil {
+		name = "" // Name is optional
+	} else {
+		name = nameCookie.Value
+	}
+
+	return claims.UserID, claims.Email, name, true
+}
+
+// Clear clears the authentication cookies
+func (s *Store) Clear(c echo.Context) error {
+	// Clear auth token
+	cookie := &http.Cookie{
+		Name:     CookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   s.secure,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.SetCookie(cookie)
+
+	// Clear name cookie
+	nameCookie := &http.Cookie{
+		Name:     "user_name",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: false,
+		Secure:   s.secure,
+		SameSite: http.SameSiteLaxMode,
+	}
+	c.SetCookie(nameCookie)
+
+	return nil
+}
+
+// IsAuthenticated checks if the user has a valid JWT token
+func (s *Store) IsAuthenticated(c echo.Context) bool {
+	_, ok := s.GetUserID(c)
+	return ok
 }

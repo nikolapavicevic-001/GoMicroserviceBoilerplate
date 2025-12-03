@@ -41,6 +41,25 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+type RegisterRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Name     string `json:"name" validate:"required"`
+	Password string `json:"password" validate:"required,min=8"`
+}
+
+func (r *RegisterRequest) Validate() error {
+	if r.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if r.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if len(r.Password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+	return nil
+}
+
 // Response types
 
 type UserResponse struct {

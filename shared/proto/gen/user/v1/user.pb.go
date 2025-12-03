@@ -684,6 +684,102 @@ func (x *GetUserByEmailResponse) GetUser() *User {
 	return nil
 }
 
+type ValidatePasswordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidatePasswordRequest) Reset() {
+	*x = ValidatePasswordRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidatePasswordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidatePasswordRequest) ProtoMessage() {}
+
+func (x *ValidatePasswordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidatePasswordRequest.ProtoReflect.Descriptor instead.
+func (*ValidatePasswordRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ValidatePasswordRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *ValidatePasswordRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+type ValidatePasswordResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidatePasswordResponse) Reset() {
+	*x = ValidatePasswordResponse{}
+	mi := &file_user_v1_user_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidatePasswordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidatePasswordResponse) ProtoMessage() {}
+
+func (x *ValidatePasswordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidatePasswordResponse.ProtoReflect.Descriptor instead.
+func (*ValidatePasswordResponse) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ValidatePasswordResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
@@ -733,7 +829,12 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\x15GetUserByEmailRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\";\n" +
 	"\x16GetUserByEmailResponse\x12!\n" +
-	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user2\xb7\x03\n" +
+	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user\"K\n" +
+	"\x17ValidatePasswordRequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"=\n" +
+	"\x18ValidatePasswordResponse\x12!\n" +
+	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user2\x90\x04\n" +
 	"\vUserService\x12<\n" +
 	"\aGetUser\x12\x17.user.v1.GetUserRequest\x1a\x18.user.v1.GetUserResponse\x12E\n" +
 	"\n" +
@@ -743,7 +844,8 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"DeleteUser\x12\x1a.user.v1.DeleteUserRequest\x1a\x1b.user.v1.DeleteUserResponse\x12B\n" +
 	"\tListUsers\x12\x19.user.v1.ListUsersRequest\x1a\x1a.user.v1.ListUsersResponse\x12Q\n" +
-	"\x0eGetUserByEmail\x12\x1e.user.v1.GetUserByEmailRequest\x1a\x1f.user.v1.GetUserByEmailResponseB@Z>github.com/yourorg/boilerplate/shared/proto/gen/user/v1;userv1b\x06proto3"
+	"\x0eGetUserByEmail\x12\x1e.user.v1.GetUserByEmailRequest\x1a\x1f.user.v1.GetUserByEmailResponse\x12W\n" +
+	"\x10ValidatePassword\x12 .user.v1.ValidatePasswordRequest\x1a!.user.v1.ValidatePasswordResponseB@Z>github.com/yourorg/boilerplate/shared/proto/gen/user/v1;userv1b\x06proto3"
 
 var (
 	file_user_v1_user_proto_rawDescOnce sync.Once
@@ -757,52 +859,57 @@ func file_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_user_v1_user_proto_rawDescData
 }
 
-var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_user_v1_user_proto_goTypes = []any{
-	(*User)(nil),                   // 0: user.v1.User
-	(*GetUserRequest)(nil),         // 1: user.v1.GetUserRequest
-	(*GetUserResponse)(nil),        // 2: user.v1.GetUserResponse
-	(*CreateUserRequest)(nil),      // 3: user.v1.CreateUserRequest
-	(*CreateUserResponse)(nil),     // 4: user.v1.CreateUserResponse
-	(*UpdateUserRequest)(nil),      // 5: user.v1.UpdateUserRequest
-	(*UpdateUserResponse)(nil),     // 6: user.v1.UpdateUserResponse
-	(*DeleteUserRequest)(nil),      // 7: user.v1.DeleteUserRequest
-	(*DeleteUserResponse)(nil),     // 8: user.v1.DeleteUserResponse
-	(*ListUsersRequest)(nil),       // 9: user.v1.ListUsersRequest
-	(*ListUsersResponse)(nil),      // 10: user.v1.ListUsersResponse
-	(*GetUserByEmailRequest)(nil),  // 11: user.v1.GetUserByEmailRequest
-	(*GetUserByEmailResponse)(nil), // 12: user.v1.GetUserByEmailResponse
-	(*timestamppb.Timestamp)(nil),  // 13: google.protobuf.Timestamp
-	(*v1.PaginationRequest)(nil),   // 14: common.v1.PaginationRequest
-	(*v1.PaginationResponse)(nil),  // 15: common.v1.PaginationResponse
+	(*User)(nil),                     // 0: user.v1.User
+	(*GetUserRequest)(nil),           // 1: user.v1.GetUserRequest
+	(*GetUserResponse)(nil),          // 2: user.v1.GetUserResponse
+	(*CreateUserRequest)(nil),        // 3: user.v1.CreateUserRequest
+	(*CreateUserResponse)(nil),       // 4: user.v1.CreateUserResponse
+	(*UpdateUserRequest)(nil),        // 5: user.v1.UpdateUserRequest
+	(*UpdateUserResponse)(nil),       // 6: user.v1.UpdateUserResponse
+	(*DeleteUserRequest)(nil),        // 7: user.v1.DeleteUserRequest
+	(*DeleteUserResponse)(nil),       // 8: user.v1.DeleteUserResponse
+	(*ListUsersRequest)(nil),         // 9: user.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),        // 10: user.v1.ListUsersResponse
+	(*GetUserByEmailRequest)(nil),    // 11: user.v1.GetUserByEmailRequest
+	(*GetUserByEmailResponse)(nil),   // 12: user.v1.GetUserByEmailResponse
+	(*ValidatePasswordRequest)(nil),  // 13: user.v1.ValidatePasswordRequest
+	(*ValidatePasswordResponse)(nil), // 14: user.v1.ValidatePasswordResponse
+	(*timestamppb.Timestamp)(nil),    // 15: google.protobuf.Timestamp
+	(*v1.PaginationRequest)(nil),     // 16: common.v1.PaginationRequest
+	(*v1.PaginationResponse)(nil),    // 17: common.v1.PaginationResponse
 }
 var file_user_v1_user_proto_depIdxs = []int32{
-	13, // 0: user.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	13, // 1: user.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	15, // 0: user.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	15, // 1: user.v1.User.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: user.v1.GetUserResponse.user:type_name -> user.v1.User
 	0,  // 3: user.v1.CreateUserResponse.user:type_name -> user.v1.User
 	0,  // 4: user.v1.UpdateUserResponse.user:type_name -> user.v1.User
-	14, // 5: user.v1.ListUsersRequest.pagination:type_name -> common.v1.PaginationRequest
+	16, // 5: user.v1.ListUsersRequest.pagination:type_name -> common.v1.PaginationRequest
 	0,  // 6: user.v1.ListUsersResponse.users:type_name -> user.v1.User
-	15, // 7: user.v1.ListUsersResponse.pagination:type_name -> common.v1.PaginationResponse
+	17, // 7: user.v1.ListUsersResponse.pagination:type_name -> common.v1.PaginationResponse
 	0,  // 8: user.v1.GetUserByEmailResponse.user:type_name -> user.v1.User
-	1,  // 9: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
-	3,  // 10: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
-	5,  // 11: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
-	7,  // 12: user.v1.UserService.DeleteUser:input_type -> user.v1.DeleteUserRequest
-	9,  // 13: user.v1.UserService.ListUsers:input_type -> user.v1.ListUsersRequest
-	11, // 14: user.v1.UserService.GetUserByEmail:input_type -> user.v1.GetUserByEmailRequest
-	2,  // 15: user.v1.UserService.GetUser:output_type -> user.v1.GetUserResponse
-	4,  // 16: user.v1.UserService.CreateUser:output_type -> user.v1.CreateUserResponse
-	6,  // 17: user.v1.UserService.UpdateUser:output_type -> user.v1.UpdateUserResponse
-	8,  // 18: user.v1.UserService.DeleteUser:output_type -> user.v1.DeleteUserResponse
-	10, // 19: user.v1.UserService.ListUsers:output_type -> user.v1.ListUsersResponse
-	12, // 20: user.v1.UserService.GetUserByEmail:output_type -> user.v1.GetUserByEmailResponse
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	0,  // 9: user.v1.ValidatePasswordResponse.user:type_name -> user.v1.User
+	1,  // 10: user.v1.UserService.GetUser:input_type -> user.v1.GetUserRequest
+	3,  // 11: user.v1.UserService.CreateUser:input_type -> user.v1.CreateUserRequest
+	5,  // 12: user.v1.UserService.UpdateUser:input_type -> user.v1.UpdateUserRequest
+	7,  // 13: user.v1.UserService.DeleteUser:input_type -> user.v1.DeleteUserRequest
+	9,  // 14: user.v1.UserService.ListUsers:input_type -> user.v1.ListUsersRequest
+	11, // 15: user.v1.UserService.GetUserByEmail:input_type -> user.v1.GetUserByEmailRequest
+	13, // 16: user.v1.UserService.ValidatePassword:input_type -> user.v1.ValidatePasswordRequest
+	2,  // 17: user.v1.UserService.GetUser:output_type -> user.v1.GetUserResponse
+	4,  // 18: user.v1.UserService.CreateUser:output_type -> user.v1.CreateUserResponse
+	6,  // 19: user.v1.UserService.UpdateUser:output_type -> user.v1.UpdateUserResponse
+	8,  // 20: user.v1.UserService.DeleteUser:output_type -> user.v1.DeleteUserResponse
+	10, // 21: user.v1.UserService.ListUsers:output_type -> user.v1.ListUsersResponse
+	12, // 22: user.v1.UserService.GetUserByEmail:output_type -> user.v1.GetUserByEmailResponse
+	14, // 23: user.v1.UserService.ValidatePassword:output_type -> user.v1.ValidatePasswordResponse
+	17, // [17:24] is the sub-list for method output_type
+	10, // [10:17] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_user_v1_user_proto_init() }
@@ -816,7 +923,7 @@ func file_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -139,3 +139,25 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 func (s *UserService) ListUsers(ctx context.Context, limit, offset int, search string) ([]*domain.User, int64, error) {
 	return s.repo.List(ctx, limit, offset, search)
 }
+
+// ValidatePassword validates user credentials and returns the user if valid
+func (s *UserService) ValidatePassword(ctx context.Context, email, password string) (*domain.User, error) {
+	log := logger.WithContext(ctx)
+
+	user, err := s.repo.FindByEmail(ctx, email)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Debug().Str("email", email).Msg("user not found during password validation")
+			return nil, errors.NewUnauthorizedError("invalid email or password")
+		}
+		return nil, err
+	}
+
+	if !user.CheckPassword(password) {
+		log.Debug().Str("email", email).Msg("invalid password")
+		return nil, errors.NewUnauthorizedError("invalid email or password")
+	}
+
+	log.Info().Str("user_id", user.ID).Str("email", email).Msg("user authenticated successfully")
+	return user, nil
+}

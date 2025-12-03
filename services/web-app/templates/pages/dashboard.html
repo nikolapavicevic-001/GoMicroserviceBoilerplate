@@ -1,92 +1,153 @@
 {{define "content"}}
-<div class="min-h-screen bg-gray-100" x-data="dashboardPage()">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <h1 class="text-xl font-bold text-gray-900">Boilerplate App</h1>
-                    </div>
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="/dashboard" class="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            Dashboard
-                        </a>
-                        <a href="#" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            Profile
-                        </a>
-                    </div>
+<div class="flex h-screen" x-data="dashboardPage()">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-800 border-r border-slate-700 flex flex-col">
+        <!-- Logo -->
+        <div class="h-16 flex items-center px-6 border-b border-slate-700">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
                 </div>
-                <div class="flex items-center">
-                    <div class="ml-3 relative" x-data="{ open: false }">
-                        <div>
-                            <button @click="open = !open" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                <span class="sr-only">Open user menu</span>
-                                <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
-                                    {{index .Name 0}}
-                                </div>
-                            </button>
-                        </div>
-                        <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5" style="display: none;">
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Your Profile</a>
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
-                            <a href="/logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</a>
-                        </div>
-                    </div>
-                </div>
+                <span class="text-lg font-semibold text-white">Boilerplate</span>
             </div>
         </div>
-    </nav>
 
-    <!-- Page Header -->
-    <header class="bg-white shadow">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <h1 class="text-3xl font-bold text-gray-900">
-                Welcome back, {{.Name}}!
-            </h1>
+        <!-- Navigation -->
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <!-- Dashboard -->
+            <a href="/dashboard" class="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg bg-slate-700 text-white">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                Dashboard
+            </a>
+
+            <!-- Services Section -->
+            <div class="pt-4">
+                <button 
+                    @click="servicesOpen = !servicesOpen" 
+                    class="flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white transition-colors"
+                >
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                        </svg>
+                        Services
+                    </div>
+                    <svg class="w-4 h-4 transition-transform" :class="servicesOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                <!-- Services Submenu -->
+                <div x-show="servicesOpen" x-collapse class="mt-1 ml-4 space-y-1">
+                    <a href="/swagger" target="_blank" class="flex items-center px-4 py-2 text-sm text-slate-400 rounded-lg hover:bg-slate-700 hover:text-white transition-colors">
+                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Swagger API
+                        <svg class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                    </a>
+                    <a href="http://localhost:3001" target="_blank" class="flex items-center px-4 py-2 text-sm text-slate-400 rounded-lg hover:bg-slate-700 hover:text-white transition-colors">
+                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        Grafana
+                        <svg class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                    </a>
+                    <a href="http://localhost:16686" target="_blank" class="flex items-center px-4 py-2 text-sm text-slate-400 rounded-lg hover:bg-slate-700 hover:text-white transition-colors">
+                        <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        Jaeger Tracing
+                        <svg class="w-3 h-3 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- User Menu -->
+        <div class="border-t border-slate-700 p-4">
+            <div class="flex items-center">
+                <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
+                    {{if .Name}}{{index .Name 0}}{{else}}U{{end}}
+                </div>
+                <div class="ml-3 flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white truncate">{{.Name}}</p>
+                    <p class="text-xs text-slate-400 truncate">{{.Email}}</p>
+                </div>
+                <a href="/logout" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="Sign out">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                </a>
+            </div>
         </div>
-    </header>
+    </aside>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <!-- Stats Cards -->
-        <div class="px-4 py-6 sm:px-0">
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header class="h-16 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-6">
+            <h1 class="text-xl font-semibold text-white">Dashboard</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-slate-400">Welcome back, {{.Name}}!</span>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <main class="flex-1 overflow-y-auto p-6 bg-slate-900">
+            <!-- Stats Cards -->
             <div
-                class="grid grid-cols-1 gap-5 sm:grid-cols-3"
+                class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6"
                 hx-get="/dashboard/stats"
                 hx-trigger="load"
                 hx-swap="innerHTML"
             >
                 <!-- Loading state -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="animate-pulse flex space-x-4">
-                            <div class="flex-1 space-y-4 py-1">
-                                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
-                                <div class="h-4 bg-gray-200 rounded w-1/2"></div>
-                            </div>
-                        </div>
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="animate-pulse space-y-3">
+                        <div class="h-4 bg-slate-700 rounded w-1/2"></div>
+                        <div class="h-6 bg-slate-700 rounded w-3/4"></div>
+                    </div>
+                </div>
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="animate-pulse space-y-3">
+                        <div class="h-4 bg-slate-700 rounded w-1/2"></div>
+                        <div class="h-6 bg-slate-700 rounded w-3/4"></div>
+                    </div>
+                </div>
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="animate-pulse space-y-3">
+                        <div class="h-4 bg-slate-700 rounded w-1/2"></div>
+                        <div class="h-6 bg-slate-700 rounded w-3/4"></div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Tabs -->
-        <div class="px-4 py-6 sm:px-0">
-            <div class="bg-white shadow rounded-lg">
-                <div class="border-b border-gray-200">
-                    <nav class="-mb-px flex" aria-label="Tabs">
+            <!-- Tabs -->
+            <div class="bg-slate-800 rounded-xl border border-slate-700">
+                <div class="border-b border-slate-700">
+                    <nav class="flex">
                         <button
                             @click="activeTab = 'activity'"
-                            :class="activeTab === 'activity' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                            class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm"
+                            :class="activeTab === 'activity' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'"
+                            class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors"
                         >
                             Recent Activity
                         </button>
                         <button
                             @click="activeTab = 'users'"
-                            :class="activeTab === 'users' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                            class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm"
+                            :class="activeTab === 'users' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'"
+                            class="flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors"
                         >
                             Users
                         </button>
@@ -96,45 +157,43 @@
                 <!-- Tab Content: Recent Activity -->
                 <div
                     x-show="activeTab === 'activity'"
-                    class="p-4"
+                    class="p-6"
                     hx-get="/dashboard/activity"
-                    hx-trigger="revealed, tabChange from:body"
+                    hx-trigger="revealed"
                     hx-swap="innerHTML"
                 >
                     <div class="animate-pulse space-y-4">
-                        <div class="h-4 bg-gray-200 rounded w-full"></div>
-                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
-                        <div class="h-4 bg-gray-200 rounded w-4/6"></div>
+                        <div class="h-4 bg-slate-700 rounded w-full"></div>
+                        <div class="h-4 bg-slate-700 rounded w-5/6"></div>
+                        <div class="h-4 bg-slate-700 rounded w-4/6"></div>
                     </div>
                 </div>
 
                 <!-- Tab Content: Users -->
                 <div
                     x-show="activeTab === 'users'"
-                    class="p-4"
+                    x-cloak
+                    class="p-6"
                     hx-get="/dashboard/users"
-                    hx-trigger="revealed, tabChange from:body"
+                    hx-trigger="revealed"
                     hx-swap="innerHTML"
-                    style="display: none;"
                 >
                     <div class="animate-pulse space-y-4">
-                        <div class="h-4 bg-gray-200 rounded w-full"></div>
-                        <div class="h-4 bg-gray-200 rounded w-5/6"></div>
-                        <div class="h-4 bg-gray-200 rounded w-4/6"></div>
+                        <div class="h-4 bg-slate-700 rounded w-full"></div>
+                        <div class="h-4 bg-slate-700 rounded w-5/6"></div>
+                        <div class="h-4 bg-slate-700 rounded w-4/6"></div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Live Updates Demo -->
-        <div class="px-4 py-6 sm:px-0">
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-medium text-gray-900 mb-4">Live Updates Demo</h2>
+            <!-- Live Updates Demo -->
+            <div class="mt-6 bg-slate-800 rounded-xl border border-slate-700 p-6">
+                <h2 class="text-lg font-medium text-white mb-4">Live Updates Demo</h2>
                 <div class="space-y-4">
                     <div>
-                        <p class="text-sm text-gray-500">Server time updates every 2 seconds:</p>
+                        <p class="text-sm text-slate-400">Server time updates every 2 seconds:</p>
                         <div
-                            class="mt-2 text-2xl font-mono text-indigo-600"
+                            class="mt-2 text-2xl font-mono text-indigo-400"
                             hx-get="/dashboard/time"
                             hx-trigger="every 2s"
                             hx-swap="innerHTML"
@@ -145,33 +204,28 @@
 
                     <div>
                         <button
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-800 transition-colors"
                             hx-post="/dashboard/action"
                             hx-swap="outerHTML"
                             hx-target="next div"
                         >
                             Trigger Action
                         </button>
-                        <div class="mt-2 text-sm text-gray-500">
+                        <div class="mt-2 text-sm text-slate-400">
                             Click the button to see HTMX in action
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 </div>
 
 <script>
 function dashboardPage() {
     return {
         activeTab: 'activity',
-        init() {
-            // Watch for tab changes and trigger custom event for HTMX
-            this.$watch('activeTab', () => {
-                document.body.dispatchEvent(new CustomEvent('tabChange'));
-            });
-        }
+        servicesOpen: true
     }
 }
 </script>

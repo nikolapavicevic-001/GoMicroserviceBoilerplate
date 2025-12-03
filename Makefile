@@ -1,5 +1,8 @@
 .PHONY: help setup up down restart logs deps-up deps-down proto-gen build test lint dev dev-user dev-gateway dev-web
 
+# Configuration - set MONITORING=false to disable monitoring tools
+MONITORING ?= true
+
 # Default target
 help:
 	@echo "Go Microservices Boilerplate - Available Commands:"
@@ -18,15 +21,21 @@ help:
 	@echo "  make ps                 - Show status of all services"
 	@echo ""
 	@echo "Dependencies (Infrastructure Only):"
-	@echo "  make deps-up            - Start MongoDB, Kafka, Jaeger, Prometheus"
+	@echo "  make deps-up            - Start MongoDB, Kafka + monitoring (Jaeger, Prometheus, Grafana)"
+	@echo "  make deps-up-minimal    - Start MongoDB, Kafka only (no monitoring)"
 	@echo "  make deps-down          - Stop infrastructure"
 	@echo "  make deps-restart       - Restart infrastructure"
 	@echo ""
 	@echo "Development (Hot Reload):"
-	@echo "  make dev                - Start deps + all services with Air hot reload"
+	@echo "  make dev                - Start deps (with monitoring) + all services with Air"
+	@echo "  make dev-fast           - Start deps (no monitoring) + all services with Air"
 	@echo "  make dev-user           - Run user-service with Air hot reload"
 	@echo "  make dev-gateway        - Run api-gateway with Air hot reload"
 	@echo "  make dev-web            - Run web-app with Air hot reload"
+	@echo ""
+	@echo "Environment Variables:"
+	@echo "  MONITORING=false        - Disable monitoring (Jaeger, Prometheus, Grafana)"
+	@echo "  Example: MONITORING=false make dev"
 	@echo ""
 	@echo "Development (Other):"
 	@echo "  make proto-gen          - Generate Go code from .proto files"
@@ -99,22 +108,39 @@ ps:
 
 # Dependencies (Infrastructure Only)
 deps-up:
+ifeq ($(MONITORING),true)
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring up -d
+	@echo "✓ Infrastructure started (MongoDB, Kafka, Jaeger, Prometheus, Grafana)"
+	@echo "  Prometheus: http://localhost:9090"
+	@echo "  Jaeger:     http://localhost:16686"
+	@echo "  Grafana:    http://localhost:3001"
+else
 	docker-compose -f deployments/docker-compose/docker-compose.deps.yml up -d
-	@echo "✓ Infrastructure started (MongoDB, Kafka, Jaeger, Prometheus)"
+	@echo "✓ Infrastructure started (MongoDB, Kafka) - monitoring disabled"
+endif
+
+deps-up-minimal:
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml up -d
+	@echo "✓ Minimal infrastructure started (MongoDB, Kafka only)"
+
+deps-up-full:
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring up -d
+	@echo "✓ Full infrastructure started (MongoDB, Kafka, Jaeger, Prometheus, Grafana)"
 
 deps-down:
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml down
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring down
 	@echo "✓ Infrastructure stopped"
 
 deps-restart:
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml restart
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring restart
 
 # Development - Hot Reload with Air
-# Prerequisites: go install github.com/cosmtrek/air@latest
+# Prerequisites: go install github.com/air-verse/air@latest
 
-dev: deps-up
+# Helper function to wait for Kafka and start services
+define start_services
 	@echo "Waiting for Kafka to be ready..."
-	@until docker exec kafka kafka-topics --bootstrap-server kafka:29092 --list > /dev/null 2>&1; do \
+	@until docker exec kafka kafka-topics.sh --bootstrap-server kafka:29092 --list > /dev/null 2>&1; do \
 		echo "  Kafka not ready yet, waiting..."; \
 		sleep 2; \
 	done
@@ -126,13 +152,26 @@ dev: deps-up
 	@echo "Services:"
 	@echo "  User Service:  localhost:50051 (gRPC)"
 	@echo "  API Gateway:   localhost:8080"
-	@echo "  Web App:       localhost:3000"
+	@echo "  Web App:       localhost:3000 (proxied via API Gateway)"
 	@echo ""
 	@trap 'kill 0' SIGINT; \
 	(cd services/user-service && air) & \
 	(cd services/api-gateway && air) & \
 	(cd services/web-app && air) & \
 	wait
+endef
+
+# Full dev with monitoring (Jaeger, Prometheus, Grafana)
+dev: deps-up-full
+	@echo "  Prometheus: http://localhost:9090"
+	@echo "  Jaeger:     http://localhost:16686"
+	@echo "  Grafana:    http://localhost:3001"
+	$(call start_services)
+
+# Fast dev without monitoring (lighter on resources)
+dev-fast: deps-up-minimal
+	@echo "⚡ Running without monitoring tools (faster startup)"
+	$(call start_services)
 
 dev-user:
 	@echo "Starting user-service with hot reload..."

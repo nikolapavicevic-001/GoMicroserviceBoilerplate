@@ -91,6 +91,24 @@ func NewAlreadyExistsError(resource, field, value string) *AppError {
 	}
 }
 
+// NewUnauthorizedError creates an unauthorized error
+func NewUnauthorizedError(message string) *AppError {
+	return &AppError{
+		Code:    "UNAUTHORIZED",
+		Message: message,
+		Err:     ErrUnauthorized,
+	}
+}
+
+// NewForbiddenError creates a forbidden error
+func NewForbiddenError(message string) *AppError {
+	return &AppError{
+		Code:    "FORBIDDEN",
+		Message: message,
+		Err:     ErrForbidden,
+	}
+}
+
 // IsNotFound checks if the error is a not found error
 func IsNotFound(err error) bool {
 	return errors.Is(err, ErrNotFound)

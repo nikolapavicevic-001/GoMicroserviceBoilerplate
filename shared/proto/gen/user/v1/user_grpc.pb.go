@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_GetUser_FullMethodName        = "/user.v1.UserService/GetUser"
-	UserService_CreateUser_FullMethodName     = "/user.v1.UserService/CreateUser"
-	UserService_UpdateUser_FullMethodName     = "/user.v1.UserService/UpdateUser"
-	UserService_DeleteUser_FullMethodName     = "/user.v1.UserService/DeleteUser"
-	UserService_ListUsers_FullMethodName      = "/user.v1.UserService/ListUsers"
-	UserService_GetUserByEmail_FullMethodName = "/user.v1.UserService/GetUserByEmail"
+	UserService_GetUser_FullMethodName          = "/user.v1.UserService/GetUser"
+	UserService_CreateUser_FullMethodName       = "/user.v1.UserService/CreateUser"
+	UserService_UpdateUser_FullMethodName       = "/user.v1.UserService/UpdateUser"
+	UserService_DeleteUser_FullMethodName       = "/user.v1.UserService/DeleteUser"
+	UserService_ListUsers_FullMethodName        = "/user.v1.UserService/ListUsers"
+	UserService_GetUserByEmail_FullMethodName   = "/user.v1.UserService/GetUserByEmail"
+	UserService_ValidatePassword_FullMethodName = "/user.v1.UserService/ValidatePassword"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -45,6 +46,8 @@ type UserServiceClient interface {
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
 	// GetUserByEmail retrieves a user by email
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*GetUserByEmailResponse, error)
+	// ValidatePassword validates user credentials and returns the user if valid
+	ValidatePassword(ctx context.Context, in *ValidatePasswordRequest, opts ...grpc.CallOption) (*ValidatePasswordResponse, error)
 }
 
 type userServiceClient struct {
@@ -115,6 +118,16 @@ func (c *userServiceClient) GetUserByEmail(ctx context.Context, in *GetUserByEma
 	return out, nil
 }
 
+func (c *userServiceClient) ValidatePassword(ctx context.Context, in *ValidatePasswordRequest, opts ...grpc.CallOption) (*ValidatePasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ValidatePasswordResponse)
+	err := c.cc.Invoke(ctx, UserService_ValidatePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -133,6 +146,8 @@ type UserServiceServer interface {
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
 	// GetUserByEmail retrieves a user by email
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*GetUserByEmailResponse, error)
+	// ValidatePassword validates user credentials and returns the user if valid
+	ValidatePassword(context.Context, *ValidatePasswordRequest) (*ValidatePasswordResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -160,6 +175,9 @@ func (UnimplementedUserServiceServer) ListUsers(context.Context, *ListUsersReque
 }
 func (UnimplementedUserServiceServer) GetUserByEmail(context.Context, *GetUserByEmailRequest) (*GetUserByEmailResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserByEmail not implemented")
+}
+func (UnimplementedUserServiceServer) ValidatePassword(context.Context, *ValidatePasswordRequest) (*ValidatePasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ValidatePassword not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -290,6 +308,24 @@ func _UserService_GetUserByEmail_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ValidatePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidatePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ValidatePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ValidatePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ValidatePassword(ctx, req.(*ValidatePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -320,6 +356,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserByEmail",
 			Handler:    _UserService_GetUserByEmail_Handler,
+		},
+		{
+			MethodName: "ValidatePassword",
+			Handler:    _UserService_ValidatePassword_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

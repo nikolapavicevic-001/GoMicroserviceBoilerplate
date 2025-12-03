@@ -123,6 +123,18 @@ func (h *UserHandler) GetUserByEmail(ctx context.Context, req *pb.GetUserByEmail
 	}, nil
 }
 
+// ValidatePassword validates user credentials and returns the user if valid
+func (h *UserHandler) ValidatePassword(ctx context.Context, req *pb.ValidatePasswordRequest) (*pb.ValidatePasswordResponse, error) {
+	user, err := h.service.ValidatePassword(ctx, req.Email, req.Password)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+
+	return &pb.ValidatePasswordResponse{
+		User: toProtoUser(user),
+	}, nil
+}
+
 // Helper functions
 
 func toProtoUser(user *domain.User) *pb.User {

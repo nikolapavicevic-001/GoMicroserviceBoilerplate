@@ -19,8 +19,8 @@ exclude_regex = ["_test.go"]
 exclude_unchanged = false
 follow_symlink = false
 full_bin = ""
-# Include directories to watch - also watch templates and static files
-include_dir = ["cmd", "config", "internal", "templates", "static"]
+# Include directories to watch - also watch templates, static files, and shared package
+include_dir = ["cmd", "config", "internal", "templates", "static", "../../shared"]
 # File extensions to watch - include HTML, CSS, JS for frontend changes
 include_ext = ["go", "html", "css", "js", "tmpl", "tpl"]
 # Kill running process before building

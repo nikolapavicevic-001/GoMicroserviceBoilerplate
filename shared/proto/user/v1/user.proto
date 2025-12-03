@@ -26,6 +26,9 @@ service UserService {
 
   // GetUserByEmail retrieves a user by email
   rpc GetUserByEmail(GetUserByEmailRequest) returns (GetUserByEmailResponse);
+
+  // ValidatePassword validates user credentials and returns the user if valid
+  rpc ValidatePassword(ValidatePasswordRequest) returns (ValidatePasswordResponse);
 }
 
 // User represents a user entity
@@ -89,5 +92,14 @@ message GetUserByEmailRequest {
 }
 
 message GetUserByEmailResponse {
+  User user = 1;
+}
+
+message ValidatePasswordRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message ValidatePasswordResponse {
   User user = 1;
 }

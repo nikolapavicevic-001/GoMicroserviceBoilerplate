@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Boilerplate App</title>
+    <title>{{.Title}} - Boilerplate</title>
 
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -11,13 +11,35 @@
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 
-    <!-- Tailwind CSS (for demo purposes - in production, build your own) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            text: '#e2e8f0',
+                            muted: '#94a3b8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/styles.css">
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body class="h-full bg-slate-900 text-slate-200">
     {{template "content" .}}
 
     <!-- Custom JS -->

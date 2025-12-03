@@ -11,7 +11,7 @@ import (
 type BaseConfig struct {
 	// Logging
 	LogLevel  string `env:"LOG_LEVEL" envDefault:"info"`
-	LogFormat string `env:"LOG_FORMAT" envDefault:"json"`
+	LogFormat string `env:"LOG_FORMAT" envDefault:"console"`
 
 	// Environment
 	Environment string `env:"ENVIRONMENT" envDefault:"development"`
@@ -20,7 +20,8 @@ type BaseConfig struct {
 	KafkaBrokers string `env:"KAFKA_BROKERS" envDefault:"localhost:9092"`
 
 	// Observability
-	JaegerEndpoint string `env:"JAEGER_ENDPOINT" envDefault:"http://localhost:14268/api/traces"`
+	TracingEnabled bool   `env:"TRACING_ENABLED" envDefault:"true"`
+	OTLPEndpoint   string `env:"OTLP_ENDPOINT" envDefault:"localhost:4318"`
 	MetricsPort    int    `env:"METRICS_PORT" envDefault:"9090"`
 }
 

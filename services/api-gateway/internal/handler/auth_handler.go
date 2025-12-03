@@ -37,6 +37,101 @@ func NewAuthHandler(
 	}
 }
 
+// Register godoc
+// @Summary Register a new user
+// @Description Create a new user account with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param user body RegisterRequest true "Registration data"
+// @Success 201 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Router /api/v1/auth/register [post]
+func (h *AuthHandler) Register(c echo.Context) error {
+	var req RegisterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid request body"})
+	}
+
+	if err := req.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Second)
+	defer cancel()
+
+	// Create user
+	resp, err := h.userClient.CreateUser(ctx, &pb.CreateUserRequest{
+		Email:    req.Email,
+		Name:     req.Name,
+		Password: req.Password,
+	})
+	if err != nil {
+		return handleGRPCError(c, err)
+	}
+
+	// Generate JWT token
+	jwtToken, err := auth.GenerateToken(resp.User.Id, resp.User.Email, h.jwtSecret, h.jwtExpiry)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "failed to generate token",
+		})
+	}
+
+	return c.JSON(http.StatusCreated, LoginResponse{
+		Token: jwtToken,
+		User:  toUserResponse(resp.User),
+	})
+}
+
+// Login godoc
+// @Summary Login with email and password
+// @Description Authenticate user with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body LoginRequest true "Login credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/v1/auth/login [post]
+func (h *AuthHandler) Login(c echo.Context) error {
+	var req LoginRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "invalid request body"})
+	}
+
+	if req.Email == "" || req.Password == "" {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "email and password are required"})
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Second)
+	defer cancel()
+
+	// Validate credentials
+	resp, err := h.userClient.ValidatePassword(ctx, &pb.ValidatePasswordRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		return handleGRPCError(c, err)
+	}
+
+	// Generate JWT token
+	jwtToken, err := auth.GenerateToken(resp.User.Id, resp.User.Email, h.jwtSecret, h.jwtExpiry)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "failed to generate token",
+		})
+	}
+
+	return c.JSON(http.StatusOK, LoginResponse{
+		Token: jwtToken,
+		User:  toUserResponse(resp.User),
+	})
+}
+
 // GoogleLogin godoc
 // @Summary Google OAuth2 login
 // @Description Redirect to Google OAuth2 login

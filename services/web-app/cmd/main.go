@@ -19,18 +19,35 @@ import (
 	"github.com/yourorg/boilerplate/services/web-app/internal/session"
 	"github.com/yourorg/boilerplate/shared/auth"
 	"github.com/yourorg/boilerplate/shared/logger"
+	grpcMiddleware "github.com/yourorg/boilerplate/shared/middleware/grpc"
+	httpMiddleware "github.com/yourorg/boilerplate/shared/middleware/http"
 	pb "github.com/yourorg/boilerplate/shared/proto/gen/user/v1"
+	"github.com/yourorg/boilerplate/shared/tracing"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TemplateRenderer is a custom html/template renderer for Echo
 type TemplateRenderer struct {
 	templates map[string]*template.Template
+	partials  map[string]*template.Template
 }
 
 // Render renders a template document
 func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	// Check if it's a partial (starts with "partials/")
+	if len(name) > 9 && name[:9] == "partials/" {
+		tmpl, ok := t.partials[name]
+		if !ok {
+			return fmt.Errorf("partial template %s not found", name)
+		}
+		// Get the base filename for ExecuteTemplate (e.g., "user-stats.html")
+		baseName := name[len("partials/"):]
+		return tmpl.ExecuteTemplate(w, baseName, data)
+	}
+
+	// Regular page template with base layout
 	tmpl, ok := t.templates[name]
 	if !ok {
 		return fmt.Errorf("template %s not found", name)
@@ -47,22 +64,54 @@ func main() {
 	}
 
 	// Initialize logger
-	log := logger.New(cfg.LogLevel, cfg.LogFormat)
+	log := logger.NewWithService(cfg.LogLevel, cfg.LogFormat, "web-app")
 	log.Info().Msg("Starting web-app service")
+
+	// Initialize tracing
+	ctx := context.Background()
+	tp, err := tracing.InitTracer(ctx, tracing.Config{
+		ServiceName:    "web-app",
+		JaegerEndpoint: cfg.OTLPEndpoint,
+		Environment:    cfg.Environment,
+		Enabled:        cfg.TracingEnabled,
+	})
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to initialize tracing, continuing without it")
+	} else if tp != nil {
+		defer tracing.Shutdown(ctx, tp)
+		log.Info().Str("endpoint", cfg.OTLPEndpoint).Msg("Tracing initialized")
+	} else {
+		log.Info().Msg("Tracing disabled")
+	}
 
 	// Initialize template renderer with custom functions
 	funcMap := template.FuncMap{
 		"add": func(a, b int) int {
 			return a + b
 		},
+		"formatTime": func(t interface{}) string {
+			switch v := t.(type) {
+			case *timestamppb.Timestamp:
+				if v == nil {
+					return "N/A"
+				}
+				return v.AsTime().Format("Jan 02, 2006 15:04")
+			case time.Time:
+				return v.Format("Jan 02, 2006 15:04")
+			default:
+				return fmt.Sprintf("%v", t)
+			}
+		},
 	}
 
 	// Parse templates - each page template is combined with the base layout
 	templates := make(map[string]*template.Template)
+	partials := make(map[string]*template.Template)
 
 	// Parse all page templates
 	pages := []string{
 		"templates/pages/login.html",
+		"templates/pages/signup.html",
 		"templates/pages/dashboard.html",
 	}
 
@@ -71,15 +120,26 @@ func main() {
 		tmpl := template.Must(template.New("").Funcs(funcMap).ParseFiles(
 			"templates/layouts/base.html",
 			page,
-			"templates/partials/user-stats.html",
-			"templates/partials/recent-activity.html",
-			"templates/partials/user-list.html",
 		))
 		templates[name] = tmpl
 	}
 
+	// Parse partial templates (for HTMX responses)
+	partialFiles := []string{
+		"templates/partials/user-stats.html",
+		"templates/partials/recent-activity.html",
+		"templates/partials/user-list.html",
+	}
+
+	for _, partial := range partialFiles {
+		name := partial[len("templates/"):]  // Extract: "partials/user-stats.html"
+		tmpl := template.Must(template.New("").Funcs(funcMap).ParseFiles(partial))
+		partials[name] = tmpl
+	}
+
 	renderer := &TemplateRenderer{
 		templates: templates,
+		partials:  partials,
 	}
 
 	// Initialize Echo
@@ -89,8 +149,17 @@ func main() {
 
 	// Middleware
 	e.Use(middleware.Recover())
+	e.Use(httpMiddleware.TracingMiddlewareWithConfig(httpMiddleware.TracingConfig{
+		SkipPaths: []string{"/metrics", "/health", "/static"},
+	}))
+	e.Use(httpMiddleware.MetricsMiddlewareWithConfig(httpMiddleware.MetricsConfig{
+		SkipPaths: []string{"/metrics", "/health", "/static"},
+	}))
 	e.Use(middleware.CORS())
 	e.Use(middleware.RequestID())
+
+	// Metrics endpoint
+	e.GET("/metrics", httpMiddleware.MetricsHandler())
 
 	// Logger middleware
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -116,14 +185,15 @@ func main() {
 	// Static files
 	e.Static("/static", "static")
 
-	// Initialize session store
-	sessionStore := session.NewStore(cfg.SessionSecret, cfg.SessionMaxAge)
+	// Initialize JWT-based session store
+	sessionStore := session.NewStore(cfg.JWTSecret, cfg.JWTExpiry)
 
 	// Connect to user service
 	log.Info().Str("address", cfg.UserServiceAddr).Msg("Connecting to user service")
 	userConn, err := grpc.NewClient(
 		cfg.UserServiceAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(grpcMiddleware.ClientTracingInterceptor()),
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to user service")
@@ -160,6 +230,8 @@ func main() {
 	})
 	e.GET("/login", authHandler.ShowLoginPage, mw.RedirectIfAuthenticated(sessionStore))
 	e.POST("/login", authHandler.Login)
+	e.GET("/signup", authHandler.ShowSignupPage, mw.RedirectIfAuthenticated(sessionStore))
+	e.POST("/signup", authHandler.Signup)
 	e.GET("/logout", authHandler.Logout)
 
 	// OAuth2 routes

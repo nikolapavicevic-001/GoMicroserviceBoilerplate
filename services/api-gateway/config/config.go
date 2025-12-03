@@ -17,6 +17,7 @@ type Config struct {
 
 	// Services
 	UserServiceAddr string `env:"GATEWAY_USER_SERVICE_ADDR" envDefault:"localhost:50051"`
+	WebAppAddr      string `env:"GATEWAY_WEBAPP_ADDR" envDefault:"http://localhost:3000"`
 
 	// JWT
 	JWTSecret       string        `env:"JWT_SECRET" envDefault:"your-secret-key-change-in-production"`
