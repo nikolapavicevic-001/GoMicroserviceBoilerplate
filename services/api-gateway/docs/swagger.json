@@ -1,0 +1,232 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API Gateway for Go Microservices Boilerplate",
+        "title": "Go Microservices API",
+        "contact": {
+            "name": "API Support",
+            "email": "support@example.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Login with email and password",
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["auth"],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users": {
+            "get": {
+                "security": [{"BearerAuth": []}],
+                "description": "List users with pagination",
+                "produces": ["application/json"],
+                "tags": ["users"],
+                "summary": "List users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ListUsersResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new user account",
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["users"],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "User data",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}": {
+            "get": {
+                "security": [{"BearerAuth": []}],
+                "description": "Get a user by their ID",
+                "produces": ["application/json"],
+                "tags": ["users"],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [{"BearerAuth": []}],
+                "description": "Update user information",
+                "consumes": ["application/json"],
+                "produces": ["application/json"],
+                "tags": ["users"],
+                "summary": "Update user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [{"BearerAuth": []}],
+                "description": "Delete a user by ID",
+                "tags": ["users"],
+                "summary": "Delete user",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "CreateUserRequest": {
+            "type": "object",
+            "required": ["email", "name", "password"],
+            "properties": {
+                "email": {"type": "string"},
+                "name": {"type": "string"},
+                "password": {"type": "string"}
+            }
+        },
+        "LoginRequest": {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+                "email": {"type": "string"},
+                "password": {"type": "string"}
+            }
+        },
+        "LoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {"type": "string"},
+                "user": {"$ref": "#/definitions/UserResponse"}
+            }
+        },
+        "UserResponse": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string"},
+                "email": {"type": "string"},
+                "name": {"type": "string"},
+                "avatar_url": {"type": "string"},
+                "created_at": {"type": "string", "format": "date-time"},
+                "updated_at": {"type": "string", "format": "date-time"}
+            }
+        },
+        "ListUsersResponse": {
+            "type": "object",
+            "properties": {
+                "users": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/UserResponse"}
+                },
+                "pagination": {"$ref": "#/definitions/PaginationResponse"}
+            }
+        },
+        "PaginationResponse": {
+            "type": "object",
+            "properties": {
+                "page": {"type": "integer"},
+                "page_size": {"type": "integer"},
+                "total_count": {"type": "integer"},
+                "total_pages": {"type": "integer"}
+            }
+        },
+        "ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string"}
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}
+

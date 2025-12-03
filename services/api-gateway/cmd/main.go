@@ -19,7 +19,6 @@ import (
 	_ "github.com/yourorg/boilerplate/services/api-gateway/docs" // Swagger docs
 	"github.com/yourorg/boilerplate/services/api-gateway/internal/grpc"
 	"github.com/yourorg/boilerplate/services/api-gateway/internal/handler"
-	mw "github.com/yourorg/boilerplate/services/api-gateway/internal/middleware"
 	"github.com/yourorg/boilerplate/shared/auth"
 	"github.com/yourorg/boilerplate/shared/logger"
 	httpMiddleware "github.com/yourorg/boilerplate/shared/middleware/http"
@@ -115,7 +114,7 @@ func main() {
 		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete},
 		AllowHeaders: []string{echo.HeaderContentType, echo.HeaderAuthorization},
 	}))
-	e.Use(mw.LoggerMiddleware(&log))
+	e.Use(httpMiddleware.LoggingMiddleware(&log))
 
 	// Health check and metrics
 	e.GET("/health", func(c echo.Context) error {
@@ -126,11 +125,12 @@ func main() {
 	e.GET("/metrics", httpMiddleware.MetricsHandler())
 
 	// Initialize handlers
-	userHandler := handler.NewUserHandler(userClient, cfg.JWTSecret, cfg.JWTExpiry)
+	jwtExpiry := cfg.GetJWTExpiry()
+	userHandler := handler.NewUserHandler(userClient, cfg.JWTSecret, jwtExpiry)
 	authHandler := handler.NewAuthHandler(
 		userClient,
 		cfg.JWTSecret,
-		cfg.JWTExpiry,
+		jwtExpiry,
 		googleProvider,
 		githubProvider,
 	)
@@ -159,7 +159,7 @@ func main() {
 
 	// Protected routes
 	protected := api.Group("")
-	protected.Use(mw.JWTMiddleware(cfg.JWTSecret))
+	protected.Use(httpMiddleware.JWTMiddleware(cfg.JWTSecret))
 
 	protected.GET("/users", userHandler.ListUsers)
 	protected.GET("/users/:id", userHandler.GetUser)

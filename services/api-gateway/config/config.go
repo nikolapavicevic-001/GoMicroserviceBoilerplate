@@ -19,9 +19,7 @@ type Config struct {
 	UserServiceAddr string `env:"GATEWAY_USER_SERVICE_ADDR" envDefault:"localhost:50051"`
 	WebAppAddr      string `env:"GATEWAY_WEBAPP_ADDR" envDefault:"http://localhost:3000"`
 
-	// JWT
-	JWTSecret       string        `env:"JWT_SECRET" envDefault:"your-secret-key-change-in-production"`
-	JWTExpiry       time.Duration `env:"JWT_EXPIRY" envDefault:"24h"`
+	// JWT (override expiry if needed)
 	JWTRefreshExpiry time.Duration `env:"JWT_REFRESH_EXPIRY" envDefault:"168h"`
 
 	// OAuth2 - Google

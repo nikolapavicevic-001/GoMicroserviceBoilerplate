@@ -17,14 +17,11 @@ import (
 	"github.com/yourorg/boilerplate/services/web-app/internal/handler"
 	mw "github.com/yourorg/boilerplate/services/web-app/internal/middleware"
 	"github.com/yourorg/boilerplate/services/web-app/internal/session"
-	"github.com/yourorg/boilerplate/shared/auth"
 	"github.com/yourorg/boilerplate/shared/logger"
-	grpcMiddleware "github.com/yourorg/boilerplate/shared/middleware/grpc"
+	sharedGrpc "github.com/yourorg/boilerplate/shared/grpc"
 	httpMiddleware "github.com/yourorg/boilerplate/shared/middleware/http"
 	pb "github.com/yourorg/boilerplate/shared/proto/gen/user/v1"
 	"github.com/yourorg/boilerplate/shared/tracing"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -186,42 +183,20 @@ func main() {
 	e.Static("/static", "static")
 
 	// Initialize JWT-based session store
-	sessionStore := session.NewStore(cfg.JWTSecret, cfg.JWTExpiry)
+	sessionStore := session.NewStore(cfg.JWTSecret, cfg.GetJWTExpiry())
 
-	// Connect to user service
+	// Connect to user service using shared gRPC client helper
 	log.Info().Str("address", cfg.UserServiceAddr).Msg("Connecting to user service")
-	userConn, err := grpc.NewClient(
-		cfg.UserServiceAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(grpcMiddleware.ClientTracingInterceptor()),
-	)
+	userConn, err := sharedGrpc.NewClientConn(cfg.UserServiceAddr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to user service")
 	}
 	defer userConn.Close()
 	userClient := pb.NewUserServiceClient(userConn)
 
-	// Initialize OAuth2 providers
-	var googleProvider, githubProvider *auth.OAuth2Provider
-	if cfg.OAuth2GoogleClientID != "" {
-		googleProvider = auth.NewGoogleProvider(
-			cfg.OAuth2GoogleClientID,
-			cfg.OAuth2GoogleClientSecret,
-			cfg.OAuth2GoogleRedirectURL,
-		)
-		log.Info().Msg("Google OAuth2 provider initialized")
-	}
-	if cfg.OAuth2GitHubClientID != "" {
-		githubProvider = auth.NewGitHubProvider(
-			cfg.OAuth2GitHubClientID,
-			cfg.OAuth2GitHubClientSecret,
-			cfg.OAuth2GitHubRedirectURL,
-		)
-		log.Info().Msg("GitHub OAuth2 provider initialized")
-	}
-
 	// Initialize handlers
-	authHandler := handler.NewAuthHandler(sessionStore, userClient, googleProvider, githubProvider)
+	// Note: OAuth2 is handled by the API Gateway, web-app proxies those routes
+	authHandler := handler.NewAuthHandler(sessionStore, userClient, cfg.GatewayAddr)
 	dashboardHandler := handler.NewDashboardHandler(sessionStore, userClient)
 
 	// Routes - Public
@@ -248,16 +223,6 @@ func main() {
 	protected.GET("/dashboard/stats", dashboardHandler.GetUserStats)
 	protected.GET("/dashboard/activity", dashboardHandler.GetRecentActivity)
 	protected.GET("/dashboard/users", dashboardHandler.GetUserList)
-
-	// Demo endpoint for live updates
-	protected.GET("/dashboard/time", func(c echo.Context) error {
-		return c.String(http.StatusOK, time.Now().Format("15:04:05"))
-	})
-
-	// Demo endpoint for HTMX action
-	protected.POST("/dashboard/action", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, `<div class="mt-2 text-sm text-green-600">Action completed successfully!</div>`)
-	})
 
 	// Health check
 	e.GET("/health", func(c echo.Context) error {

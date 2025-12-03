@@ -85,12 +85,16 @@ services:
     ports:
       - "50051:50051"
     environment:
+      # Logging
       - LOG_LEVEL=debug
       - LOG_FORMAT=console
+      - ENVIRONMENT=development
+      # Service config
       - USER_SERVICE_GRPC_PORT=50051
-      - USER_SERVICE_MONGO_URI=mongodb://mongodb:27017
-      - USER_SERVICE_MONGO_DB=users_db
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=users_db
       - KAFKA_BROKERS=kafka:29092
+      # Observability
       - OTLP_ENDPOINT=otel-collector:4318
       - TRACING_ENABLED=true
     depends_on:
@@ -110,20 +114,28 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # Logging
       - LOG_LEVEL=debug
       - LOG_FORMAT=console
+      - ENVIRONMENT=development
+      # Service config
       - GATEWAY_HTTP_PORT=8080
       - GATEWAY_USER_SERVICE_ADDR=user-service:50051
+      - GATEWAY_WEBAPP_ADDR=http://web-app:3000
+      # JWT (shared secret)
       - JWT_SECRET=your-secret-key-change-in-production-minimum-32-characters
       - JWT_EXPIRY=24h
       - JWT_REFRESH_EXPIRY=168h
-      - OAUTH2_GOOGLE_CLIENT_ID=${OAUTH2_GOOGLE_CLIENT_ID}
-      - OAUTH2_GOOGLE_CLIENT_SECRET=${OAUTH2_GOOGLE_CLIENT_SECRET}
-      - OAUTH2_GOOGLE_REDIRECT_URL=http://localhost:8080/auth/google/callback
-      - OAUTH2_GITHUB_CLIENT_ID=${OAUTH2_GITHUB_CLIENT_ID}
-      - OAUTH2_GITHUB_CLIENT_SECRET=${OAUTH2_GITHUB_CLIENT_SECRET}
-      - OAUTH2_GITHUB_REDIRECT_URL=http://localhost:8080/auth/github/callback
+      # OAuth2 (optional)
+      - OAUTH2_GOOGLE_CLIENT_ID=${OAUTH2_GOOGLE_CLIENT_ID:-}
+      - OAUTH2_GOOGLE_CLIENT_SECRET=${OAUTH2_GOOGLE_CLIENT_SECRET:-}
+      - OAUTH2_GOOGLE_REDIRECT_URL=http://localhost:8080/api/v1/auth/google/callback
+      - OAUTH2_GITHUB_CLIENT_ID=${OAUTH2_GITHUB_CLIENT_ID:-}
+      - OAUTH2_GITHUB_CLIENT_SECRET=${OAUTH2_GITHUB_CLIENT_SECRET:-}
+      - OAUTH2_GITHUB_REDIRECT_URL=http://localhost:8080/api/v1/auth/github/callback
+      # CORS
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+      # Observability
       - OTLP_ENDPOINT=otel-collector:4318
       - TRACING_ENABLED=true
     depends_on:
@@ -140,22 +152,18 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Logging
       - LOG_LEVEL=debug
       - LOG_FORMAT=console
+      - ENVIRONMENT=development
+      # Service config
       - WEBAPP_HTTP_PORT=3000
       - WEBAPP_USER_SERVICE_ADDR=user-service:50051
       - WEBAPP_GATEWAY_ADDR=http://api-gateway:8080
-      - SESSION_SECRET=change-this-secret-in-production-minimum-32-chars
-      - SESSION_MAX_AGE=24h
+      # JWT (shared secret - must match API Gateway)
       - JWT_SECRET=your-secret-key-change-in-production-minimum-32-characters
       - JWT_EXPIRY=24h
-      - OAUTH2_GOOGLE_CLIENT_ID=${OAUTH2_GOOGLE_CLIENT_ID}
-      - OAUTH2_GOOGLE_CLIENT_SECRET=${OAUTH2_GOOGLE_CLIENT_SECRET}
-      - OAUTH2_GOOGLE_REDIRECT_URL=http://localhost:3000/auth/google/callback
-      - OAUTH2_GITHUB_CLIENT_ID=${OAUTH2_GITHUB_CLIENT_ID}
-      - OAUTH2_GITHUB_CLIENT_SECRET=${OAUTH2_GITHUB_CLIENT_SECRET}
-      - OAUTH2_GITHUB_REDIRECT_URL=http://localhost:3000/auth/github/callback
-      - CSRF_SECRET=change-this-csrf-secret-in-production
+      # Observability
       - OTLP_ENDPOINT=otel-collector:4318
       - TRACING_ENABLED=true
     depends_on:

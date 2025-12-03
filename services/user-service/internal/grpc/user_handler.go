@@ -3,8 +3,6 @@ package grpc
 import (
 	"context"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonv1 "github.com/yourorg/boilerplate/shared/proto/gen/common/v1"
@@ -149,18 +147,5 @@ func toProtoUser(user *domain.User) *pb.User {
 }
 
 func toGRPCError(err error) error {
-	switch {
-	case errors.IsNotFound(err):
-		return status.Error(codes.NotFound, err.Error())
-	case errors.IsAlreadyExists(err):
-		return status.Error(codes.AlreadyExists, err.Error())
-	case errors.IsValidation(err):
-		return status.Error(codes.InvalidArgument, err.Error())
-	case errors.IsUnauthorized(err):
-		return status.Error(codes.Unauthenticated, err.Error())
-	case errors.IsForbidden(err):
-		return status.Error(codes.PermissionDenied, err.Error())
-	default:
-		return status.Error(codes.Internal, "internal server error")
-	}
+	return errors.ToGRPCError(err)
 }

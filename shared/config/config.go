@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/caarlos0/env/v10"
 )
@@ -18,6 +19,10 @@ type BaseConfig struct {
 
 	// Kafka (shared broker)
 	KafkaBrokers string `env:"KAFKA_BROKERS" envDefault:"localhost:9092"`
+
+	// JWT Authentication (shared across services)
+	JWTSecret string `env:"JWT_SECRET" envDefault:"your-secret-key-change-in-production-minimum-32-characters"`
+	JWTExpiry string `env:"JWT_EXPIRY" envDefault:"24h"`
 
 	// Observability
 	TracingEnabled bool   `env:"TRACING_ENABLED" envDefault:"true"`
@@ -74,4 +79,13 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// GetJWTExpiry parses the JWT expiry string to a duration
+func (c *BaseConfig) GetJWTExpiry() time.Duration {
+	d, err := time.ParseDuration(c.JWTExpiry)
+	if err != nil {
+		return 24 * time.Hour // default
+	}
+	return d
 }

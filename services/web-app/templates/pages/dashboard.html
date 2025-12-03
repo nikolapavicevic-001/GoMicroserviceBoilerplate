@@ -186,37 +186,6 @@
                 </div>
             </div>
 
-            <!-- Live Updates Demo -->
-            <div class="mt-6 bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h2 class="text-lg font-medium text-white mb-4">Live Updates Demo</h2>
-                <div class="space-y-4">
-                    <div>
-                        <p class="text-sm text-slate-400">Server time updates every 2 seconds:</p>
-                        <div
-                            class="mt-2 text-2xl font-mono text-indigo-400"
-                            hx-get="/dashboard/time"
-                            hx-trigger="every 2s"
-                            hx-swap="innerHTML"
-                        >
-                            Loading...
-                        </div>
-                    </div>
-
-                    <div>
-                        <button
-                            class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-800 transition-colors"
-                            hx-post="/dashboard/action"
-                            hx-swap="outerHTML"
-                            hx-target="next div"
-                        >
-                            Trigger Action
-                        </button>
-                        <div class="mt-2 text-sm text-slate-400">
-                            Click the button to see HTMX in action
-                        </div>
-                    </div>
-                </div>
-            </div>
         </main>
     </div>
 </div>

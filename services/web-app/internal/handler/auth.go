@@ -7,31 +7,26 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/yourorg/boilerplate/services/web-app/internal/session"
-	"github.com/yourorg/boilerplate/shared/auth"
 	pb "github.com/yourorg/boilerplate/shared/proto/gen/user/v1"
-	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type AuthHandler struct {
-	sessionStore   *session.Store
-	userClient     pb.UserServiceClient
-	googleProvider *auth.OAuth2Provider
-	githubProvider *auth.OAuth2Provider
+	sessionStore *session.Store
+	userClient   pb.UserServiceClient
+	gatewayAddr  string
 }
 
 func NewAuthHandler(
 	sessionStore *session.Store,
 	userClient pb.UserServiceClient,
-	googleProvider *auth.OAuth2Provider,
-	githubProvider *auth.OAuth2Provider,
+	gatewayAddr string,
 ) *AuthHandler {
 	return &AuthHandler{
-		sessionStore:   sessionStore,
-		userClient:     userClient,
-		googleProvider: googleProvider,
-		githubProvider: githubProvider,
+		sessionStore: sessionStore,
+		userClient:   userClient,
+		gatewayAddr:  gatewayAddr,
 	}
 }
 
@@ -181,128 +176,37 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/login")
 }
 
-// GoogleLogin redirects to Google OAuth2 login
+// GoogleLogin redirects to API Gateway's Google OAuth2 login
 func (h *AuthHandler) GoogleLogin(c echo.Context) error {
-	if h.googleProvider == nil {
-		return c.String(http.StatusBadRequest, "Google OAuth2 not configured")
-	}
-
-	url := h.googleProvider.Config.AuthCodeURL("state", oauth2.AccessTypeOnline)
-	return c.Redirect(http.StatusTemporaryRedirect, url)
+	return c.Redirect(http.StatusTemporaryRedirect, h.gatewayAddr+"/api/v1/auth/google")
 }
 
-// GoogleCallback handles Google OAuth2 callback
+// GoogleCallback handles Google OAuth2 callback (proxied from API Gateway)
 func (h *AuthHandler) GoogleCallback(c echo.Context) error {
-	if h.googleProvider == nil {
-		return c.String(http.StatusBadRequest, "Google OAuth2 not configured")
+	// This is called after OAuth2 flow completes
+	// The API Gateway will have already validated and the token should be in the query
+	token := c.QueryParam("token")
+	if token == "" {
+		return c.Redirect(http.StatusSeeOther, "/login?error=oauth_failed")
 	}
 
-	code := c.QueryParam("code")
-	if code == "" {
-		return c.String(http.StatusBadRequest, "No code provided")
-	}
-
-	// Exchange code for token
-	ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Second)
-	defer cancel()
-
-	token, err := h.googleProvider.Config.Exchange(ctx, code)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to exchange token")
-	}
-
-	// Get user info
-	userInfo, err := h.googleProvider.GetUserInfo(ctx, token)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to get user info")
-	}
-
-	// Get or create user
-	user, err := h.getOrCreateUser(ctx, userInfo.Email, userInfo.Name, userInfo.Picture)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to create user")
-	}
-
-	// Set session
-	if err := h.sessionStore.SetUser(c, user.Id, user.Email, user.Name); err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to create session")
-	}
-
+	// TODO: Parse token and set session
 	return c.Redirect(http.StatusSeeOther, "/dashboard")
 }
 
-// GitHubLogin redirects to GitHub OAuth2 login
+// GitHubLogin redirects to API Gateway's GitHub OAuth2 login
 func (h *AuthHandler) GitHubLogin(c echo.Context) error {
-	if h.githubProvider == nil {
-		return c.String(http.StatusBadRequest, "GitHub OAuth2 not configured")
-	}
-
-	url := h.githubProvider.Config.AuthCodeURL("state", oauth2.AccessTypeOnline)
-	return c.Redirect(http.StatusTemporaryRedirect, url)
+	return c.Redirect(http.StatusTemporaryRedirect, h.gatewayAddr+"/api/v1/auth/github")
 }
 
-// GitHubCallback handles GitHub OAuth2 callback
+// GitHubCallback handles GitHub OAuth2 callback (proxied from API Gateway)
 func (h *AuthHandler) GitHubCallback(c echo.Context) error {
-	if h.githubProvider == nil {
-		return c.String(http.StatusBadRequest, "GitHub OAuth2 not configured")
+	// This is called after OAuth2 flow completes
+	token := c.QueryParam("token")
+	if token == "" {
+		return c.Redirect(http.StatusSeeOther, "/login?error=oauth_failed")
 	}
 
-	code := c.QueryParam("code")
-	if code == "" {
-		return c.String(http.StatusBadRequest, "No code provided")
-	}
-
-	// Exchange code for token
-	ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Second)
-	defer cancel()
-
-	token, err := h.githubProvider.Config.Exchange(ctx, code)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to exchange token")
-	}
-
-	// Get user info
-	userInfo, err := h.githubProvider.GetUserInfo(ctx, token)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to get user info")
-	}
-
-	// Get or create user
-	user, err := h.getOrCreateUser(ctx, userInfo.Email, userInfo.Name, userInfo.Picture)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to create user")
-	}
-
-	// Set session
-	if err := h.sessionStore.SetUser(c, user.Id, user.Email, user.Name); err != nil {
-		return c.String(http.StatusInternalServerError, "Failed to create session")
-	}
-
+	// TODO: Parse token and set session
 	return c.Redirect(http.StatusSeeOther, "/dashboard")
-}
-
-// getOrCreateUser gets existing user or creates new one
-func (h *AuthHandler) getOrCreateUser(ctx context.Context, email, name, avatarURL string) (*pb.User, error) {
-	// Try to get existing user
-	resp, err := h.userClient.GetUserByEmail(ctx, &pb.GetUserByEmailRequest{
-		Email: email,
-	})
-	if err == nil {
-		return resp.User, nil
-	}
-
-	// If not found, create new user
-	if status.Code(err) == codes.NotFound {
-		createResp, err := h.userClient.CreateUser(ctx, &pb.CreateUserRequest{
-			Email:    email,
-			Name:     name,
-			Password: "", // OAuth2 users don't need password
-		})
-		if err != nil {
-			return nil, err
-		}
-		return createResp.User, nil
-	}
-
-	return nil, err
 }
