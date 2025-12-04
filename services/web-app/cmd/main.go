@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,49 +12,20 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/yourorg/boilerplate/services/web-app/config"
 	"github.com/yourorg/boilerplate/services/web-app/internal/handler"
-	mw "github.com/yourorg/boilerplate/services/web-app/internal/middleware"
-	"github.com/yourorg/boilerplate/services/web-app/internal/session"
-	"github.com/yourorg/boilerplate/shared/logger"
+	"github.com/yourorg/boilerplate/services/web-app/templating"
+	sharedConfig "github.com/yourorg/boilerplate/shared/config"
 	sharedGrpc "github.com/yourorg/boilerplate/shared/grpc"
+	"github.com/yourorg/boilerplate/shared/logger"
 	httpMiddleware "github.com/yourorg/boilerplate/shared/middleware/http"
 	pb "github.com/yourorg/boilerplate/shared/proto/gen/user/v1"
-	"github.com/yourorg/boilerplate/shared/tracing"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// TemplateRenderer is a custom html/template renderer for Echo
-type TemplateRenderer struct {
-	templates map[string]*template.Template
-	partials  map[string]*template.Template
-}
-
-// Render renders a template document
-func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	// Check if it's a partial (starts with "partials/")
-	if len(name) > 9 && name[:9] == "partials/" {
-		tmpl, ok := t.partials[name]
-		if !ok {
-			return fmt.Errorf("partial template %s not found", name)
-		}
-		// Get the base filename for ExecuteTemplate (e.g., "user-stats.html")
-		baseName := name[len("partials/"):]
-		return tmpl.ExecuteTemplate(w, baseName, data)
-	}
-
-	// Regular page template with base layout
-	tmpl, ok := t.templates[name]
-	if !ok {
-		return fmt.Errorf("template %s not found", name)
-	}
-	return tmpl.ExecuteTemplate(w, "base.html", data)
-}
-
 func main() {
 	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
+	cfg := &sharedConfig.BaseConfig{}
+	if err := sharedConfig.Load(cfg); err != nil {
 		fmt.Printf("Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
@@ -64,24 +34,7 @@ func main() {
 	log := logger.NewWithService(cfg.LogLevel, cfg.LogFormat, "web-app")
 	log.Info().Msg("Starting web-app service")
 
-	// Initialize tracing
-	ctx := context.Background()
-	tp, err := tracing.InitTracer(ctx, tracing.Config{
-		ServiceName:    "web-app",
-		JaegerEndpoint: cfg.OTLPEndpoint,
-		Environment:    cfg.Environment,
-		Enabled:        cfg.TracingEnabled,
-	})
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to initialize tracing, continuing without it")
-	} else if tp != nil {
-		defer tracing.Shutdown(ctx, tp)
-		log.Info().Str("endpoint", cfg.OTLPEndpoint).Msg("Tracing initialized")
-	} else {
-		log.Info().Msg("Tracing disabled")
-	}
-
-	// Initialize template renderer with custom functions
+	// Template FuncMap
 	funcMap := template.FuncMap{
 		"add": func(a, b int) int {
 			return a + b
@@ -101,91 +54,27 @@ func main() {
 		},
 	}
 
-	// Parse templates - each page template is combined with the base layout
-	templates := make(map[string]*template.Template)
-	partials := make(map[string]*template.Template)
-
-	// Parse all page templates
-	pages := []string{
-		"templates/pages/login.html",
-		"templates/pages/signup.html",
-		"templates/pages/dashboard.html",
-	}
-
-	for _, page := range pages {
-		name := page[len("templates/pages/"):]  // Extract filename: "login.html", "dashboard.html"
-		tmpl := template.Must(template.New("").Funcs(funcMap).ParseFiles(
-			"templates/layouts/base.html",
-			page,
-		))
-		templates[name] = tmpl
-	}
-
-	// Parse partial templates (for HTMX responses)
-	partialFiles := []string{
-		"templates/partials/user-stats.html",
-		"templates/partials/recent-activity.html",
-		"templates/partials/user-list.html",
-	}
-
-	for _, partial := range partialFiles {
-		name := partial[len("templates/"):]  // Extract: "partials/user-stats.html"
-		tmpl := template.Must(template.New("").Funcs(funcMap).ParseFiles(partial))
-		partials[name] = tmpl
-	}
-
-	renderer := &TemplateRenderer{
-		templates: templates,
-		partials:  partials,
+	// Load **all templates** automatically
+	loaded, err := templating.LoadTemplates(funcMap)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to load templates")
 	}
 
 	// Initialize Echo
 	e := echo.New()
-	e.Renderer = renderer
+	e.Renderer = templating.NewRenderer(loaded)
 	e.HideBanner = true
 
 	// Middleware
 	e.Use(middleware.Recover())
-	e.Use(httpMiddleware.TracingMiddlewareWithConfig(httpMiddleware.TracingConfig{
-		SkipPaths: []string{"/metrics", "/health", "/static"},
-	}))
-	e.Use(httpMiddleware.MetricsMiddlewareWithConfig(httpMiddleware.MetricsConfig{
-		SkipPaths: []string{"/metrics", "/health", "/static"},
-	}))
 	e.Use(middleware.CORS())
 	e.Use(middleware.RequestID())
-
-	// Metrics endpoint
-	e.GET("/metrics", httpMiddleware.MetricsHandler())
-
-	// Logger middleware
-	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			start := time.Now()
-
-			// Process request
-			err := next(c)
-
-			// Log request
-			log.Info().
-				Str("method", c.Request().Method).
-				Str("uri", c.Request().RequestURI).
-				Int("status", c.Response().Status).
-				Dur("latency", time.Since(start)).
-				Str("ip", c.RealIP()).
-				Msg("HTTP request")
-
-			return err
-		}
-	})
+	e.Use(httpMiddleware.LoggingMiddleware(&log))
 
 	// Static files
 	e.Static("/static", "static")
 
-	// Initialize JWT-based session store
-	sessionStore := session.NewStore(cfg.JWTSecret, cfg.GetJWTExpiry())
-
-	// Connect to user service using shared gRPC client helper
+	// Connect to user service via gRPC
 	log.Info().Str("address", cfg.UserServiceAddr).Msg("Connecting to user service")
 	userConn, err := sharedGrpc.NewClientConn(cfg.UserServiceAddr)
 	if err != nil {
@@ -194,35 +83,21 @@ func main() {
 	defer userConn.Close()
 	userClient := pb.NewUserServiceClient(userConn)
 
-	// Initialize handlers
-	// Note: OAuth2 is handled by the API Gateway, web-app proxies those routes
-	authHandler := handler.NewAuthHandler(sessionStore, userClient, cfg.GatewayAddr)
-	dashboardHandler := handler.NewDashboardHandler(sessionStore, userClient)
+	// Dashboard handler
+	dashboardHandler := handler.NewDashboardHandler(cfg.JWTSecret, userClient)
 
-	// Routes - Public
-	e.GET("/", func(c echo.Context) error {
-		return c.Redirect(http.StatusSeeOther, "/login")
+	// Routes (web pages)
+	e.GET("/login", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "login.html", map[string]interface{}{
+			"Title": "Login",
+		})
 	})
-	e.GET("/login", authHandler.ShowLoginPage, mw.RedirectIfAuthenticated(sessionStore))
-	e.POST("/login", authHandler.Login)
-	e.GET("/signup", authHandler.ShowSignupPage, mw.RedirectIfAuthenticated(sessionStore))
-	e.POST("/signup", authHandler.Signup)
-	e.GET("/logout", authHandler.Logout)
-
-	// OAuth2 routes
-	e.GET("/auth/google", authHandler.GoogleLogin)
-	e.GET("/auth/google/callback", authHandler.GoogleCallback)
-	e.GET("/auth/github", authHandler.GitHubLogin)
-	e.GET("/auth/github/callback", authHandler.GitHubCallback)
-
-	// Routes - Protected
-	protected := e.Group("")
-	protected.Use(mw.RequireAuth(sessionStore))
-
-	protected.GET("/dashboard", dashboardHandler.ShowDashboard)
-	protected.GET("/dashboard/stats", dashboardHandler.GetUserStats)
-	protected.GET("/dashboard/activity", dashboardHandler.GetRecentActivity)
-	protected.GET("/dashboard/users", dashboardHandler.GetUserList)
+	e.GET("/signup", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "signup.html", map[string]interface{}{
+			"Title": "Sign Up",
+		})
+	})
+	e.GET("/dashboard", dashboardHandler.ShowDashboard)
 
 	// Health check
 	e.GET("/health", func(c echo.Context) error {
@@ -232,23 +107,22 @@ func main() {
 		})
 	})
 
-	// Start server in a goroutine
+	// Start server in background
 	go func() {
-		addr := fmt.Sprintf(":%d", cfg.HTTPPort)
+		addr := fmt.Sprintf(":%d", cfg.WebAppHTTPPort)
 		log.Info().Str("address", addr).Msg("Starting HTTP server")
 		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
 			log.Fatal().Err(err).Msg("HTTP server failed")
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
+	// Wait for shutdown signal (graceful shutdown)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
 	log.Info().Msg("Shutting down server...")
 
-	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

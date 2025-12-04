@@ -14,21 +14,19 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/yourorg/boilerplate/shared/proto/gen/user/v1"
-	"github.com/yourorg/boilerplate/services/user-service/config"
 	grpcHandler "github.com/yourorg/boilerplate/services/user-service/internal/grpc"
 	"github.com/yourorg/boilerplate/services/user-service/internal/repository/mongodb"
 	"github.com/yourorg/boilerplate/services/user-service/internal/service"
+	sharedConfig "github.com/yourorg/boilerplate/shared/config"
 	mongoClient "github.com/yourorg/boilerplate/shared/database/mongodb"
-	"github.com/yourorg/boilerplate/shared/kafka"
 	"github.com/yourorg/boilerplate/shared/logger"
 	grpcMiddleware "github.com/yourorg/boilerplate/shared/middleware/grpc"
-	"github.com/yourorg/boilerplate/shared/tracing"
 )
 
 func main() {
 	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
+	cfg := &sharedConfig.BaseConfig{}
+	if err := sharedConfig.Load(cfg); err != nil {
 		fmt.Printf("Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
@@ -39,28 +37,12 @@ func main() {
 	log.Info().
 		Str("service", "user-service").
 		Str("environment", cfg.Environment).
-		Int("grpc_port", cfg.GRPCPort).
+		Int("grpc_port", cfg.UserServicePort).
 		Msg("Starting user service")
 
 	// Create context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	// Initialize tracing
-	tp, err := tracing.InitTracer(ctx, tracing.Config{
-		ServiceName:    "user-service",
-		JaegerEndpoint: cfg.OTLPEndpoint,
-		Environment:    cfg.Environment,
-		Enabled:        cfg.TracingEnabled,
-	})
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to initialize tracing, continuing without it")
-	} else if tp != nil {
-		defer tracing.Shutdown(ctx, tp)
-		log.Info().Str("endpoint", cfg.OTLPEndpoint).Msg("Tracing initialized")
-	} else {
-		log.Info().Msg("Tracing disabled")
-	}
 
 	// Connect to MongoDB
 	mongoConfig := mongoClient.NewConfig(cfg.MongoURI, cfg.MongoDB)
@@ -81,17 +63,8 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create indexes")
 	}
 
-	// Initialize Kafka producer
-	kafkaProducer, err := kafka.NewProducer(cfg.GetKafkaBrokers(), &log)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create Kafka producer")
-	}
-	defer kafkaProducer.Close()
-
-	log.Info().Msg("Kafka producer initialized")
-
 	// Initialize service
-	userService := service.NewUserService(userRepo, kafkaProducer)
+	userService := service.NewUserService(userRepo)
 
 	// Initialize gRPC handler
 	userHandler := grpcHandler.NewUserHandler(userService)
@@ -99,7 +72,6 @@ func main() {
 	// Create gRPC server with interceptors
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			grpcMiddleware.TracingInterceptor(),
 			grpcMiddleware.LoggingInterceptor(&log),
 			grpcMiddleware.RecoveryInterceptor(&log),
 		),
@@ -117,7 +89,7 @@ func main() {
 	reflection.Register(grpcServer)
 
 	// Start gRPC server
-	addr := fmt.Sprintf(":%d", cfg.GRPCPort)
+	addr := fmt.Sprintf(":%d", cfg.UserServicePort)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to listen")

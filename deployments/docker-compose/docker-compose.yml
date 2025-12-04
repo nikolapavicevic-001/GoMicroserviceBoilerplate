@@ -17,65 +17,6 @@ services:
     networks:
       - boilerplate
 
-  # Kafka with KRaft (no Zookeeper)
-  kafka:
-    image: bitnami/kafka:3.9
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    environment:
-      # KRaft settings
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:29092,CONTROLLER://:9093,EXTERNAL://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Cluster settings
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      # Allow plaintext
-      - ALLOW_PLAINTEXT_LISTENER=yes
-    volumes:
-      - kafka_data:/bitnami/kafka
-    healthcheck:
-      test: kafka-topics.sh --bootstrap-server kafka:29092 --list
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    networks:
-      - boilerplate
-
-  # Jaeger
-  jaeger:
-    image: jaegertracing/all-in-one:1.51
-    container_name: jaeger
-    ports:
-      - "16686:16686"  # Web UI
-      - "14268:14268"  # Direct
-    networks:
-      - boilerplate
-
-  # Prometheus
-  prometheus:
-    image: prom/prometheus:v2.48.0
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    networks:
-      - boilerplate
-
   # User Service
   user-service:
     build:
@@ -93,14 +34,8 @@ services:
       - USER_SERVICE_GRPC_PORT=50051
       - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB=users_db
-      - KAFKA_BROKERS=kafka:29092
-      # Observability
-      - OTLP_ENDPOINT=otel-collector:4318
-      - TRACING_ENABLED=true
     depends_on:
       mongodb:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
     networks:
       - boilerplate
@@ -130,14 +65,8 @@ services:
       - OAUTH2_GOOGLE_CLIENT_ID=${OAUTH2_GOOGLE_CLIENT_ID:-}
       - OAUTH2_GOOGLE_CLIENT_SECRET=${OAUTH2_GOOGLE_CLIENT_SECRET:-}
       - OAUTH2_GOOGLE_REDIRECT_URL=http://localhost:8080/api/v1/auth/google/callback
-      - OAUTH2_GITHUB_CLIENT_ID=${OAUTH2_GITHUB_CLIENT_ID:-}
-      - OAUTH2_GITHUB_CLIENT_SECRET=${OAUTH2_GITHUB_CLIENT_SECRET:-}
-      - OAUTH2_GITHUB_REDIRECT_URL=http://localhost:8080/api/v1/auth/github/callback
       # CORS
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
-      # Observability
-      - OTLP_ENDPOINT=otel-collector:4318
-      - TRACING_ENABLED=true
     depends_on:
       - user-service
     networks:
@@ -163,9 +92,6 @@ services:
       # JWT (shared secret - must match API Gateway)
       - JWT_SECRET=your-secret-key-change-in-production-minimum-32-characters
       - JWT_EXPIRY=24h
-      # Observability
-      - OTLP_ENDPOINT=otel-collector:4318
-      - TRACING_ENABLED=true
     depends_on:
       - user-service
       - api-gateway
@@ -178,5 +104,3 @@ networks:
 
 volumes:
   mongodb_data:
-  kafka_data:
-  prometheus_data:

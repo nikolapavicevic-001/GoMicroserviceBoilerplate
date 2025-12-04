@@ -1,8 +1,5 @@
 .PHONY: help setup up down restart logs deps-up deps-down proto-gen build test lint dev dev-user dev-gateway dev-web
 
-# Configuration - set MONITORING=false to disable monitoring tools
-MONITORING ?= true
-
 # Default target
 help:
 	@echo "Go Microservices Boilerplate - Available Commands:"
@@ -10,32 +7,13 @@ help:
 	@echo "Setup & Configuration:"
 	@echo "  make setup              - Initial setup (copy .env.example to .env)"
 	@echo ""
-	@echo "Service Management:"
-	@echo "  make up                 - Start all services via Docker Compose"
-	@echo "  make down               - Stop all services"
-	@echo "  make restart            - Restart all services"
-	@echo "  make logs               - View logs from all services"
-	@echo "  make logs-gateway       - View API Gateway logs"
-	@echo "  make logs-user          - View user-service logs"
-	@echo "  make logs-web           - View web-app logs"
-	@echo "  make ps                 - Show status of all services"
-	@echo ""
 	@echo "Dependencies (Infrastructure Only):"
-	@echo "  make deps-up            - Start MongoDB, Kafka + monitoring (Jaeger, Prometheus, Grafana)"
-	@echo "  make deps-up-minimal    - Start MongoDB, Kafka only (no monitoring)"
+	@echo "  make deps-up            - Start MongoDB"
 	@echo "  make deps-down          - Stop infrastructure"
 	@echo "  make deps-restart       - Restart infrastructure"
 	@echo ""
 	@echo "Development (Hot Reload):"
-	@echo "  make dev                - Start deps (with monitoring) + all services with Air"
-	@echo "  make dev-fast           - Start deps (no monitoring) + all services with Air"
-	@echo "  make dev-user           - Run user-service with Air hot reload"
-	@echo "  make dev-gateway        - Run api-gateway with Air hot reload"
-	@echo "  make dev-web            - Run web-app with Air hot reload"
-	@echo ""
-	@echo "Environment Variables:"
-	@echo "  MONITORING=false        - Disable monitoring (Jaeger, Prometheus, Grafana)"
-	@echo "  Example: MONITORING=false make dev"
+	@echo "  make dev                - Start deps + all services with Air"
 	@echo ""
 	@echo "Development (Other):"
 	@echo "  make proto-gen          - Generate Go code from .proto files"
@@ -68,84 +46,29 @@ help:
 setup:
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
-		echo "✓ Created .env from .env.example"; \
-		echo "⚠ Please update .env with your actual configuration"; \
+		echo "Created .env from .env.example"; \
+		echo "Please update .env with your actual configuration"; \
 	else \
 		echo "✓ .env already exists"; \
 	fi
 
-# Service Management
-up:
-	docker-compose -f deployments/docker-compose/docker-compose.yml up -d
-	@echo "✓ All services started"
-	@echo "  API Gateway: http://localhost:8080"
-	@echo "  Web App: http://localhost:3000"
-	@echo "  Prometheus: http://localhost:9090"
-	@echo "  Jaeger: http://localhost:16686"
-
-down:
-	docker-compose -f deployments/docker-compose/docker-compose.yml down
-	@echo "✓ All services stopped"
-
-restart:
-	docker-compose -f deployments/docker-compose/docker-compose.yml restart
-	@echo "✓ All services restarted"
-
-logs:
-	docker-compose -f deployments/docker-compose/docker-compose.yml logs -f
-
-logs-gateway:
-	docker-compose -f deployments/docker-compose/docker-compose.yml logs -f api-gateway
-
-logs-user:
-	docker-compose -f deployments/docker-compose/docker-compose.yml logs -f user-service
-
-logs-web:
-	docker-compose -f deployments/docker-compose/docker-compose.yml logs -f web-app
-
-ps:
-	docker-compose -f deployments/docker-compose/docker-compose.yml ps
-
 # Dependencies (Infrastructure Only)
 deps-up:
-ifeq ($(MONITORING),true)
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring up -d
-	@echo "✓ Infrastructure started (MongoDB, Kafka, Jaeger, Prometheus, Grafana)"
-	@echo "  Prometheus: http://localhost:9090"
-	@echo "  Jaeger:     http://localhost:16686"
-	@echo "  Grafana:    http://localhost:3001"
-else
 	docker-compose -f deployments/docker-compose/docker-compose.deps.yml up -d
-	@echo "✓ Infrastructure started (MongoDB, Kafka) - monitoring disabled"
-endif
-
-deps-up-minimal:
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml up -d
-	@echo "✓ Minimal infrastructure started (MongoDB, Kafka only)"
-
-deps-up-full:
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring up -d
-	@echo "✓ Full infrastructure started (MongoDB, Kafka, Jaeger, Prometheus, Grafana)"
+	@echo "Infrastructure started (MongoDB)"
 
 deps-down:
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring down
-	@echo "✓ Infrastructure stopped"
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml down
+	@echo "Infrastructure stopped"
 
 deps-restart:
-	docker-compose -f deployments/docker-compose/docker-compose.deps.yml --profile monitoring restart
+	docker-compose -f deployments/docker-compose/docker-compose.deps.yml restart
+	@echo "Infrastructure restarted"
 
 # Development - Hot Reload with Air
 # Prerequisites: go install github.com/air-verse/air@latest
 
-# Helper function to wait for Kafka and start services
-define start_services
-	@echo "Waiting for Kafka to be ready..."
-	@until docker exec kafka kafka-topics.sh --bootstrap-server kafka:29092 --list > /dev/null 2>&1; do \
-		echo "  Kafka not ready yet, waiting..."; \
-		sleep 2; \
-	done
-	@echo "✓ Kafka is ready!"
-	@echo ""
+dev: deps-up
 	@echo "Starting all services with hot reload..."
 	@echo "Press Ctrl+C to stop all services"
 	@echo ""
@@ -159,31 +82,6 @@ define start_services
 	(cd services/api-gateway && air) & \
 	(cd services/web-app && air) & \
 	wait
-endef
-
-# Full dev with monitoring (Jaeger, Prometheus, Grafana)
-dev: deps-up-full
-	@echo "  Prometheus: http://localhost:9090"
-	@echo "  Jaeger:     http://localhost:16686"
-	@echo "  Grafana:    http://localhost:3001"
-	$(call start_services)
-
-# Fast dev without monitoring (lighter on resources)
-dev-fast: deps-up-minimal
-	@echo "⚡ Running without monitoring tools (faster startup)"
-	$(call start_services)
-
-dev-user:
-	@echo "Starting user-service with hot reload..."
-	cd services/user-service && air
-
-dev-gateway:
-	@echo "Starting api-gateway with hot reload..."
-	cd services/api-gateway && air
-
-dev-web:
-	@echo "Starting web-app with hot reload..."
-	cd services/web-app && air
 
 # Development - Code Generation
 proto-gen:

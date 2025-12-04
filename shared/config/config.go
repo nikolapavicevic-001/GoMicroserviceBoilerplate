@@ -2,13 +2,11 @@ package config
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v10"
 )
 
-// BaseConfig contains common configuration shared across all services
 type BaseConfig struct {
 	// Logging
 	LogLevel  string `env:"LOG_LEVEL" envDefault:"info"`
@@ -17,17 +15,27 @@ type BaseConfig struct {
 	// Environment
 	Environment string `env:"ENVIRONMENT" envDefault:"development"`
 
-	// Kafka (shared broker)
-	KafkaBrokers string `env:"KAFKA_BROKERS" envDefault:"localhost:9092"`
-
 	// JWT Authentication (shared across services)
-	JWTSecret string `env:"JWT_SECRET" envDefault:"your-secret-key-change-in-production-minimum-32-characters"`
-	JWTExpiry string `env:"JWT_EXPIRY" envDefault:"24h"`
+	JWTSecret      string        `env:"JWT_SECRET" envDefault:"your-secret-key-change-in-production-minimum-32-characters"`
+	JWTExpiry      string        `env:"JWT_EXPIRY" envDefault:"24h"`
+	JWTRefreshExpiry time.Duration `env:"JWT_REFRESH_EXPIRY" envDefault:"168h"`
 
-	// Observability
-	TracingEnabled bool   `env:"TRACING_ENABLED" envDefault:"true"`
-	OTLPEndpoint   string `env:"OTLP_ENDPOINT" envDefault:"localhost:4318"`
-	MetricsPort    int    `env:"METRICS_PORT" envDefault:"9090"`
+	// API Gateway
+	HTTPPort          int           `env:"GATEWAY_HTTP_PORT" envDefault:"8080"`
+	GatewayTimeout    time.Duration `env:"GATEWAY_TIMEOUT" envDefault:"30s"`
+	UserServiceAddr   string        `env:"USER_SERVICE_ADDR" envDefault:"localhost:50051"`
+	WebAppAddr        string        `env:"WEBAPP_ADDR" envDefault:"http://localhost:3000"`
+	CORSAllowedOrigins string       `env:"CORS_ALLOWED_ORIGINS" envDefault:"http://localhost:3000,http://localhost:8080"`
+
+	// Web App
+	WebAppHTTPPort int           `env:"WEBAPP_HTTP_PORT" envDefault:"3000"`
+	WebAppTimeout  time.Duration `env:"WEBAPP_TIMEOUT" envDefault:"30s"`
+
+	// User Service
+	UserServicePort     int    `env:"USER_SERVICE_PORT" envDefault:"50051"`
+	MongoURI     string `env:"MONGO_URI" envDefault:"mongodb://localhost:27017"`
+	MongoDB      string `env:"MONGO_DB" envDefault:"users_db"`
+	MongoTimeout int    `env:"MONGO_TIMEOUT" envDefault:"10"`
 }
 
 // Load loads configuration from environment variables
@@ -36,11 +44,6 @@ func Load(cfg interface{}) error {
 		return fmt.Errorf("failed to parse environment variables: %w", err)
 	}
 	return nil
-}
-
-// GetKafkaBrokers returns Kafka brokers as a slice
-func (c *BaseConfig) GetKafkaBrokers() []string {
-	return strings.Split(c.KafkaBrokers, ",")
 }
 
 // IsDevelopment returns true if running in development mode
@@ -53,33 +56,6 @@ func (c *BaseConfig) IsProduction() bool {
 	return c.Environment == "production"
 }
 
-// Validate validates the base configuration
-func (c *BaseConfig) Validate() error {
-	validLogLevels := []string{"debug", "info", "warn", "error"}
-	if !contains(validLogLevels, c.LogLevel) {
-		return fmt.Errorf("invalid log level: %s (must be one of: %v)", c.LogLevel, validLogLevels)
-	}
-
-	validLogFormats := []string{"json", "console"}
-	if !contains(validLogFormats, c.LogFormat) {
-		return fmt.Errorf("invalid log format: %s (must be one of: %v)", c.LogFormat, validLogFormats)
-	}
-
-	if c.KafkaBrokers == "" {
-		return fmt.Errorf("KAFKA_BROKERS is required")
-	}
-
-	return nil
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
 
 // GetJWTExpiry parses the JWT expiry string to a duration
 func (c *BaseConfig) GetJWTExpiry() time.Duration {

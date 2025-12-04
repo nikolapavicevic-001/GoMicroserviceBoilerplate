@@ -47,55 +47,6 @@ func JWTMiddleware(secret string) echo.MiddlewareFunc {
 	}
 }
 
-// OptionalJWTMiddleware validates JWT if present but doesn't require it
-func OptionalJWTMiddleware(secret string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			authHeader := c.Request().Header.Get("Authorization")
-			if authHeader == "" {
-				return next(c)
-			}
-
-			parts := strings.Split(authHeader, " ")
-			if len(parts) == 2 && parts[0] == "Bearer" {
-				claims, err := auth.ValidateToken(parts[1], secret)
-				if err == nil {
-					c.Set("user_id", claims.UserID)
-					c.Set("email", claims.Email)
-				}
-			}
-
-			return next(c)
-		}
-	}
-}
-
-// JWTCookieMiddleware validates JWT from cookie (for web apps)
-func JWTCookieMiddleware(secret string, cookieName string) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			cookie, err := c.Cookie(cookieName)
-			if err != nil {
-				return c.JSON(http.StatusUnauthorized, map[string]string{
-					"message": "missing authentication",
-				})
-			}
-
-			claims, err := auth.ValidateToken(cookie.Value, secret)
-			if err != nil {
-				return c.JSON(http.StatusUnauthorized, map[string]string{
-					"message": "invalid token",
-				})
-			}
-
-			c.Set("user_id", claims.UserID)
-			c.Set("email", claims.Email)
-
-			return next(c)
-		}
-	}
-}
-
 // GetUserID extracts user ID from context (set by JWT middleware)
 func GetUserID(c echo.Context) (string, bool) {
 	userID, ok := c.Get("user_id").(string)

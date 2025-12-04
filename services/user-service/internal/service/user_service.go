@@ -6,22 +6,18 @@ import (
 	"github.com/yourorg/boilerplate/services/user-service/internal/domain"
 	"github.com/yourorg/boilerplate/services/user-service/internal/repository"
 	"github.com/yourorg/boilerplate/shared/errors"
-	"github.com/yourorg/boilerplate/shared/events"
-	"github.com/yourorg/boilerplate/shared/kafka"
 	"github.com/yourorg/boilerplate/shared/logger"
 )
 
 // UserService handles user business logic
 type UserService struct {
-	repo     repository.UserRepository
-	producer *kafka.Producer
+	repo repository.UserRepository
 }
 
 // NewUserService creates a new user service
-func NewUserService(repo repository.UserRepository, producer *kafka.Producer) *UserService {
+func NewUserService(repo repository.UserRepository) *UserService {
 	return &UserService{
-		repo:     repo,
-		producer: producer,
+		repo: repo,
 	}
 }
 
@@ -55,13 +51,6 @@ func (s *UserService) CreateUser(ctx context.Context, email, name, password stri
 		Str("user_id", user.ID).
 		Str("email", user.Email).
 		Msg("user created successfully")
-
-	// Publish user created event
-	event, _ := events.NewUserCreatedEvent(user.ID, user.Email, user.Name)
-	if err := s.producer.Publish(ctx, "user.events", event); err != nil {
-		log.Error().Err(err).Msg("failed to publish user created event")
-		// Don't fail the request - event publishing is best-effort
-	}
 
 	return user, nil
 }
@@ -104,12 +93,6 @@ func (s *UserService) UpdateUser(ctx context.Context, id, name, avatarURL string
 		Str("user_id", user.ID).
 		Msg("user updated successfully")
 
-	// Publish user updated event
-	event, _ := events.NewUserUpdatedEvent(user.ID, user.Email, user.Name)
-	if err := s.producer.Publish(ctx, "user.events", event); err != nil {
-		log.Error().Err(err).Msg("failed to publish user updated event")
-	}
-
 	return user, nil
 }
 
@@ -125,12 +108,6 @@ func (s *UserService) DeleteUser(ctx context.Context, id string) error {
 	log.Info().
 		Str("user_id", id).
 		Msg("user deleted successfully")
-
-	// Publish user deleted event
-	event, _ := events.NewUserDeletedEvent(id)
-	if err := s.producer.Publish(ctx, "user.events", event); err != nil {
-		log.Error().Err(err).Msg("failed to publish user deleted event")
-	}
 
 	return nil
 }
@@ -158,6 +135,5 @@ func (s *UserService) ValidatePassword(ctx context.Context, email, password stri
 		return nil, errors.NewUnauthorizedError("invalid email or password")
 	}
 
-	log.Info().Str("user_id", user.ID).Str("email", email).Msg("user authenticated successfully")
 	return user, nil
 }
