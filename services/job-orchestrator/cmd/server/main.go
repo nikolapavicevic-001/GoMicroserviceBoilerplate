@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,43 +16,46 @@ import (
 	"github.com/microserviceboilerplate/job-orchestrator/infrastructure/router"
 	"github.com/microserviceboilerplate/job-orchestrator/infrastructure/scheduler"
 	natsadapter "github.com/microserviceboilerplate/job-orchestrator/internal/adapter/nats"
-	"github.com/nats-io/nats.go"
+	commoncfg "github.com/nikolapavicevic-001/CommonGo/config"
+	"github.com/nikolapavicevic-001/CommonGo/logger"
+	natsx "github.com/nikolapavicevic-001/CommonGo/nats"
+	"github.com/nikolapavicevic-001/CommonGo/postgres"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Initialize logger using CommonGo
+	log := logger.New(commoncfg.GetEnv("LOG_LEVEL", "info"), "job-orchestrator")
+
 	// Load configuration
 	cfg := config.Load()
 
-	// Database connection
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	// Database connection using CommonGo
+	pgCfg := postgres.DefaultConfig(cfg.DatabaseURL)
+	pool, err := postgres.Open(ctx, pgCfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
 	defer pool.Close()
-
-	// Verify database connection
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
-	}
-	log.Println("Connected to PostgreSQL")
+	log.Info().Msg("Connected to PostgreSQL")
 
 	// Run database migrations
 	if err := runMigrations(ctx, pool); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		log.Fatal().Err(err).Msg("Failed to run migrations")
 	}
-	log.Println("Database migrations completed")
+	log.Info().Msg("Database migrations completed")
 
-	// NATS connection
-	natsURL := getEnv("NATS_URL", "nats://nats:4222")
-	nc, err := nats.Connect(natsURL)
+	// NATS connection using CommonGo
+	natsURL := commoncfg.GetEnv("NATS_URL", "nats://nats:4222")
+	natsCfg := natsx.DefaultConfig(natsURL, "job-orchestrator")
+	nc, err := natsx.Connect(natsCfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to NATS: %v", err)
+		log.Fatal().Err(err).Msg("Failed to connect to NATS")
 	}
 	defer nc.Close()
-	log.Println("Connected to NATS")
+	log.Info().Msg("Connected to NATS")
 
 	// Initialize repositories
 	jobRepo := repository.NewPostgresJobRepository(pool)
@@ -65,9 +67,9 @@ func main() {
 	// Register NATS request-reply handlers
 	natsHandler := natsadapter.NewHandler(nc, jobService)
 	if err := natsHandler.RegisterHandlers(); err != nil {
-		log.Printf("Warning: Failed to register NATS handlers: %v", err)
+		log.Warn().Err(err).Msg("Failed to register NATS handlers")
 	} else {
-		log.Println("NATS request-reply handlers registered")
+		log.Info().Msg("NATS request-reply handlers registered")
 	}
 
 	// Initialize HTTP handlers
@@ -81,7 +83,7 @@ func main() {
 	// Initialize and start cron scheduler
 	cronScheduler := scheduler.NewCronScheduler(jobService, jobRepo)
 	if err := cronScheduler.Start(ctx); err != nil {
-		log.Fatalf("Failed to start scheduler: %v", err)
+		log.Fatal().Err(err).Msg("Failed to start scheduler")
 	}
 	defer cronScheduler.Stop()
 
@@ -97,25 +99,18 @@ func main() {
 		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 		<-sigint
 
-		log.Println("Shutting down server...")
+		log.Info().Msg("Shutting down server...")
 		cancel()
 		cronScheduler.Stop()
 		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("Server shutdown error: %v", err)
+			log.Error().Err(err).Msg("Server shutdown error")
 		}
 	}()
 
-	log.Printf("Starting job orchestrator on port %s", cfg.Port)
+	log.Info().Str("port", cfg.Port).Msg("Starting job orchestrator")
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Fatal().Err(err).Msg("Failed to start server")
 	}
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 // runMigrations runs database migrations
@@ -167,7 +162,6 @@ CREATE TRIGGER update_jobs_updated_at BEFORE UPDATE ON jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 `
 
-	log.Println("Running database migrations...")
 	_, err := pool.Exec(ctx, migrationSQL)
 	return err
 }

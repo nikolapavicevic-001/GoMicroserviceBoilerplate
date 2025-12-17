@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,23 +16,28 @@ import (
 	"github.com/microserviceboilerplate/web/domain/service"
 	"github.com/microserviceboilerplate/web/infrastructure/config"
 	"github.com/microserviceboilerplate/web/infrastructure/router"
-	"github.com/nats-io/nats.go"
+	"github.com/nikolapavicevic-001/CommonGo/logger"
+	natsx "github.com/nikolapavicevic-001/CommonGo/nats"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Initialize logger
+	log := logger.New("info", "web-service")
+
 	// Load configuration
 	cfg := config.Load()
 
-	// NATS connection
-	nc, err := nats.Connect(cfg.NATSURL)
+	// NATS connection using CommonGo
+	natsCfg := natsx.DefaultConfig(cfg.NATSURL, "web-service")
+	nc, err := natsx.Connect(natsCfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to NATS: %v", err)
+		log.Fatal().Err(err).Msg("Failed to connect to NATS")
 	}
 	defer nc.Close()
-	log.Println("Connected to NATS")
+	log.Info().Msg("Connected to NATS")
 
 	// Initialize NATS clients
 	natsClient := natsclient.NewClient(nc)
@@ -45,7 +49,7 @@ func main() {
 	sessionRepo := session.NewCookieSessionStore()
 	templateRepo, err := template.NewHTMLTemplateRenderer(cfg.TemplatesPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize template renderer: %v", err)
+		log.Fatal().Err(err).Msg("Failed to initialize template renderer")
 	}
 
 	// Initialize use cases (domain services)
@@ -80,15 +84,15 @@ func main() {
 		signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 		<-sigint
 
-		log.Println("Shutting down server...")
+		log.Info().Msg("Shutting down server...")
 		cancel()
 		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("Server shutdown error: %v", err)
+			log.Error().Err(err).Msg("Server shutdown error")
 		}
 	}()
 
-	log.Printf("Starting web service on port %s", cfg.Port)
+	log.Info().Str("port", cfg.Port).Msg("Starting web service")
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Fatal().Err(err).Msg("Failed to start server")
 	}
 }

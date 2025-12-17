@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -21,6 +19,10 @@ import (
 	eventadapter "github.com/microserviceboilerplate/device/internal/adapter/event"
 	repositoryadapter "github.com/microserviceboilerplate/device/internal/adapter/repository"
 	"github.com/microserviceboilerplate/device/internal/service"
+	"github.com/nikolapavicevic-001/CommonGo/config"
+	"github.com/nikolapavicevic-001/CommonGo/logger"
+	natsx "github.com/nikolapavicevic-001/CommonGo/nats"
+	"github.com/nikolapavicevic-001/CommonGo/postgres"
 )
 
 const (
@@ -31,32 +33,32 @@ const (
 func main() {
 	ctx := context.Background()
 
-	// Database connection
-	dbURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable")
-	pool, err := pgxpool.New(ctx, dbURL)
+	// Initialize logger using CommonGo
+	log := logger.New(config.GetEnv("LOG_LEVEL", "info"), "device-service")
+
+	// Database connection using CommonGo
+	dbURL := config.GetEnv("DATABASE_URL", "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable")
+	pgCfg := postgres.DefaultConfig(dbURL)
+	pool, err := postgres.Open(ctx, pgCfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
 	defer pool.Close()
+	log.Info().Msg("Connected to PostgreSQL")
 
-	// Verify database connection
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
-	}
-	log.Println("Connected to PostgreSQL")
-
-	// NATS connection
-	natsURL := getEnv("NATS_URL", "nats://nats:4222")
-	nc, err := nats.Connect(natsURL)
+	// NATS connection using CommonGo
+	natsURL := config.GetEnv("NATS_URL", "nats://nats:4222")
+	natsCfg := natsx.DefaultConfig(natsURL, "device-service")
+	nc, err := natsx.Connect(natsCfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to NATS: %v", err)
+		log.Fatal().Err(err).Msg("Failed to connect to NATS")
 	}
 	defer nc.Close()
 
 	// JetStream
 	js, err := nc.JetStream()
 	if err != nil {
-		log.Fatalf("Failed to get JetStream: %v", err)
+		log.Fatal().Err(err).Msg("Failed to get JetStream")
 	}
 
 	// Ensure stream exists for device events
@@ -65,9 +67,9 @@ func main() {
 		Subjects: []string{"events.device.*"},
 	})
 	if err != nil && err != nats.ErrStreamNameAlreadyInUse {
-		log.Printf("Warning: Failed to create stream: %v", err)
+		log.Warn().Err(err).Msg("Failed to create stream")
 	} else {
-		log.Println("NATS JetStream stream ensured")
+		log.Info().Msg("NATS JetStream stream ensured")
 	}
 
 	// Initialize adapters (hexagonal architecture)
@@ -78,15 +80,15 @@ func main() {
 	// Register NATS request-reply handlers
 	natsHandler := natsadapter.NewHandler(nc, deviceService)
 	if err := natsHandler.RegisterHandlers(); err != nil {
-		log.Printf("Warning: Failed to register NATS handlers: %v", err)
+		log.Warn().Err(err).Msg("Failed to register NATS handlers")
 	} else {
-		log.Println("NATS request-reply handlers registered")
+		log.Info().Msg("NATS request-reply handlers registered")
 	}
 
 	// gRPC server
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatal().Err(err).Msg("Failed to listen")
 	}
 
 	grpcServer := grpc.NewServer()
@@ -106,9 +108,9 @@ func main() {
 		healthHandler := httpadapter.NewHealthHandler()
 		httpRouter.RegisterHealthHandler(healthHandler)
 
-		log.Printf("HTTP health check server listening on %s", httpPort)
+		log.Info().Str("port", httpPort).Msg("HTTP health check server listening")
 		if err := http.ListenAndServe(httpPort, httpRouter.GetChiRouter()); err != nil {
-			log.Printf("Health check server error: %v", err)
+			log.Error().Err(err).Msg("Health check server error")
 		}
 	}()
 
@@ -117,25 +119,18 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("gRPC server listening on %s", grpcPort)
+		log.Info().Str("port", grpcPort).Msg("gRPC server listening")
 		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("Failed to serve: %v", err)
+			log.Fatal().Err(err).Msg("Failed to serve")
 		}
 	}()
 
 	<-sigChan
-	log.Println("Shutting down gracefully...")
+	log.Info().Msg("Shutting down gracefully...")
 
 	// Graceful shutdown
 	healthServer.Shutdown()
 	grpcServer.GracefulStop()
-	log.Println("Server stopped")
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+	log.Info().Msg("Server stopped")
 }
 
