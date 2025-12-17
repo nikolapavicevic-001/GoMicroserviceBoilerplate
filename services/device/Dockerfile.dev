@@ -1,0 +1,40 @@
+FROM golang:1.23-alpine
+
+# Install Air for hot reload (using v1.52.0 for Go 1.21+ compatibility)
+RUN go install github.com/cosmtrek/air@v1.52.0
+
+# Install protoc and build tools
+RUN apk add --no-cache protobuf protoc make git ca-certificates
+
+# Install protoc plugins via Go
+ENV GOPATH=/go
+ENV PATH=$PATH:/go/bin
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+
+# Install sqlc
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+# Set working directory
+WORKDIR /app/services/device
+
+# Copy go mod files first for better caching
+COPY services/device/go.mod services/device/go.sum ./
+RUN go mod download
+
+# Copy Air config
+COPY services/device/.air.toml ./.air.toml
+
+# Create tmp directory for Air
+RUN mkdir -p tmp
+
+# Note: SQL and proto files will be generated on first run or via init script
+# For hot reload, we assume sqlc and protoc code is already generated
+# Source code will be mounted as volume
+# Air will watch for changes and rebuild automatically
+
+EXPOSE 9090 8080
+
+# Default command (can be overridden in docker-compose)
+CMD ["air", "-c", ".air.toml"]
+

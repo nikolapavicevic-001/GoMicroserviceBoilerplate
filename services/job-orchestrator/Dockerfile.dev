@@ -1,0 +1,29 @@
+FROM golang:1.23-alpine
+
+# Install Air for hot reload (using v1.52.0 for Go 1.21+ compatibility)
+RUN go install github.com/cosmtrek/air@v1.52.0
+
+# Install ca-certificates
+RUN apk --no-cache add ca-certificates
+
+# Set working directory
+WORKDIR /app/services/job-orchestrator
+
+# Copy go mod files first for better caching
+COPY services/job-orchestrator/go.mod services/job-orchestrator/go.sum ./
+RUN go mod download
+
+# Copy Air config
+COPY services/job-orchestrator/.air.toml ./.air.toml
+
+# Create tmp directory for Air
+RUN mkdir -p tmp
+
+# Source code will be mounted as volume
+# Air will watch for changes and rebuild automatically
+
+EXPOSE 8080
+
+# Default command (can be overridden in docker-compose)
+CMD ["air", "-c", ".air.toml"]
+

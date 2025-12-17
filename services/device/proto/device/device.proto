@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package device;
+
+option go_package = "github.com/microserviceboilerplate/device/proto/device";
+
+service DeviceService {
+  rpc GetDevice(GetDeviceRequest) returns (Device);
+  rpc CreateDevice(CreateDeviceRequest) returns (Device);
+  rpc UpdateDevice(UpdateDeviceRequest) returns (Device);
+  rpc DeleteDevice(DeleteDeviceRequest) returns (DeleteDeviceResponse);
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+}
+
+message Device {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string status = 4;
+  int64 created_at = 5;  // Unix timestamp
+  int64 updated_at = 6;  // Unix timestamp
+}
+
+message GetDeviceRequest {
+  string id = 1;
+}
+
+message CreateDeviceRequest {
+  string name = 1;
+  string type = 2;
+  string status = 3;
+}
+
+message UpdateDeviceRequest {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string status = 4;
+}
+
+message DeleteDeviceRequest {
+  string id = 1;
+}
+
+message DeleteDeviceResponse {
+  bool success = 1;
+}
+
+message ListDevicesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListDevicesResponse {
+  repeated Device devices = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+

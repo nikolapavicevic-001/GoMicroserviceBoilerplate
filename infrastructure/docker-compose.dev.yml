@@ -1,0 +1,48 @@
+# Development override for docker-compose.yml
+# This enables hot reload with Air for Go services
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Web Service - Hot Reload Mode
+  web-service:
+    build:
+      context: ..
+      dockerfile: services/web/Dockerfile.dev
+    volumes:
+      # Mount source code for hot reload
+      - ../services/web:/app/services/web
+    command: sh -c "cd /app/services/web && air -c .air.toml"
+    environment:
+      - AIR=true
+      - NATS_URL=nats://nats:4222
+    # Don't restart in dev mode - let Air handle restarts
+    restart: "no"
+
+  # Device Service - Hot Reload Mode
+  device-service:
+    build:
+      context: ..
+      dockerfile: services/device/Dockerfile.dev
+    volumes:
+      # Mount source code for hot reload
+      - ../services/device:/app/services/device
+    command: sh -c "cd /app/services/device && air -c .air.toml"
+    environment:
+      - AIR=true
+    # Don't restart in dev mode - let Air handle restarts
+    restart: "no"
+
+  # Job Orchestrator - Hot Reload Mode
+  job-orchestrator:
+    build:
+      context: ..
+      dockerfile: services/job-orchestrator/Dockerfile.dev
+    volumes:
+      # Mount source code for hot reload
+      - ../services/job-orchestrator:/app/services/job-orchestrator
+    command: sh -c "cd /app/services/job-orchestrator && air -c .air.toml"
+    environment:
+      - AIR=true
+    # Don't restart in dev mode - let Air handle restarts
+    restart: "no"
+

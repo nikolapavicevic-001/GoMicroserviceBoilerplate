@@ -1,0 +1,114 @@
+{{define "jobs.html"}}
+{{template "base.html" .}}
+{{end}}
+
+{{define "jobs-content"}}
+<div class="page-header">
+    <h2>Jobs</h2>
+    <p>Monitor and manage Flink jobs</p>
+</div>
+
+<div class="content-card">
+    <div id="jobs-table" hx-get="/jobs/table" hx-trigger="load, jobsUpdated from:body" hx-swap="innerHTML" hx-poll="5s">
+        <div style="text-align: center; padding: 40px; color: #64748b;">
+            Loading jobs...
+        </div>
+    </div>
+</div>
+
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th {
+        text-align: left;
+        padding: 12px;
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        padding: 12px;
+        border-top: 1px solid #e2e8f0;
+        color: #334155;
+    }
+
+    tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-running {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-finished {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-failed {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-submitted {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-cancelled {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 8px;
+    }
+
+    .btn-start {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .btn-stop {
+        background-color: #ef4444;
+        color: white;
+    }
+
+    .btn-start:hover {
+        background-color: #059669;
+    }
+
+    .btn-stop:hover {
+        background-color: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #64748b;
+    }
+</style>
+{{end}}

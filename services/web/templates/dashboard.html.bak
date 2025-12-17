@@ -1,0 +1,132 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h2>Dashboard</h2>
+    <p>Manage your devices</p>
+</div>
+
+<div class="content-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3 style="font-size: 20px; font-weight: 600; color: #1e293b;">Devices</h3>
+        <button 
+            hx-get="/devices/create-form" 
+            hx-target="#device-modal-content"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('device-modal').style.display='block'"
+            style="background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+            + Add Device
+        </button>
+    </div>
+
+    <div id="devices-table" hx-get="/devices" hx-trigger="load, devicesUpdated from:body" hx-swap="innerHTML">
+        <div style="text-align: center; padding: 40px; color: #64748b;">
+            Loading devices...
+        </div>
+    </div>
+</div>
+
+<!-- Device Modal -->
+<div id="device-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-size: 20px; font-weight: 600;">Device</h3>
+            <button onclick="document.getElementById('device-modal').style.display='none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+        <div id="device-modal-content"></div>
+    </div>
+</div>
+
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th {
+        text-align: left;
+        padding: 12px;
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        padding: 12px;
+        border-top: 1px solid #e2e8f0;
+        color: #334155;
+    }
+
+    tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-inactive {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-pending {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 8px;
+    }
+
+    .btn-edit {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .btn-delete {
+        background-color: #ef4444;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background-color: #2563eb;
+    }
+
+    .btn-delete:hover {
+        background-color: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #64748b;
+    }
+
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 16px;
+        opacity: 0.5;
+    }
+</style>
+{{end}}

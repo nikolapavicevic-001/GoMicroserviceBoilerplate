@@ -1,0 +1,51 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# Go workspace file
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+build/
+target/
+*.jar
+*.war
+
+# Dependencies
+vendor/
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Kubernetes
+*.kubeconfig
+
+# Docker
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+
